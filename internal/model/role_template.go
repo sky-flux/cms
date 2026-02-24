@@ -7,7 +7,7 @@ import (
 )
 
 type RoleTemplate struct {
-	bun.BaseModel `bun:"table:sfc_role_templates,alias:rt"`
+	bun.BaseModel `bun:"table:sfc_role_templates,alias:rtpl"`
 
 	ID          string    `bun:"id,pk,type:uuid,default:uuidv7()" json:"id"`
 	Name        string    `bun:"name,notnull,unique" json:"name"`

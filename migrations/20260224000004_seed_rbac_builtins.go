@@ -9,7 +9,6 @@ import (
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		// Seed 4 built-in roles
 		_, err := db.ExecContext(ctx, `
 			INSERT INTO public.sfc_roles (name, slug, description, built_in, status) VALUES
 			('超级管理员', 'super', '拥有所有权限，不可修改/删除', true, true),
@@ -22,7 +21,6 @@ func init() {
 			return fmt.Errorf("seed built-in roles: %w", err)
 		}
 
-		// Seed 4 built-in role templates
 		_, err = db.ExecContext(ctx, `
 			INSERT INTO public.sfc_role_templates (name, description, built_in) VALUES
 			('超级管理员模板', '预置超级管理员权限集', true),

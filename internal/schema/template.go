@@ -18,16 +18,13 @@ CREATE TABLE {schema}.sfc_site_post_types (
 
 CREATE INDEX idx_sfc_site_post_types_slug ON {schema}.sfc_site_post_types(slug);
 
-CREATE TRIGGER trg_sfc_site_post_types_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_post_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 -- 2. 文章主表
 CREATE TABLE {schema}.sfc_site_posts (
     id              UUID PRIMARY KEY DEFAULT uuidv7(),
     author_id       UUID NOT NULL REFERENCES public.sfc_users(id),
     cover_image_id  UUID,
     post_type       VARCHAR(50) NOT NULL DEFAULT 'article',
-    status          post_status NOT NULL DEFAULT 'draft',
+    status          SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 4),
     title           VARCHAR(500) NOT NULL,
     slug            VARCHAR(600) NOT NULL,
     excerpt         TEXT,
@@ -50,12 +47,9 @@ CREATE UNIQUE INDEX idx_sfc_site_posts_slug      ON {schema}.sfc_site_posts(slug
 CREATE INDEX idx_sfc_site_posts_author           ON {schema}.sfc_site_posts(author_id);
 CREATE INDEX idx_sfc_site_posts_status           ON {schema}.sfc_site_posts(status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_posts_published        ON {schema}.sfc_site_posts(published_at DESC)
-    WHERE status = 'published' AND deleted_at IS NULL;
+    WHERE status = 3 AND deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_posts_extra            ON {schema}.sfc_site_posts USING gin(extra_fields);
-CREATE INDEX idx_sfc_site_posts_scheduled        ON {schema}.sfc_site_posts(scheduled_at) WHERE status = 'scheduled';
-
-CREATE TRIGGER trg_sfc_site_posts_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_posts FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE INDEX idx_sfc_site_posts_scheduled        ON {schema}.sfc_site_posts(scheduled_at) WHERE status = 2;
 
 -- 3. 文章多语言表
 CREATE TABLE {schema}.sfc_site_post_translations (
@@ -75,9 +69,6 @@ CREATE TABLE {schema}.sfc_site_post_translations (
 );
 
 CREATE INDEX idx_sfc_site_pt_post_locale ON {schema}.sfc_site_post_translations(post_id, locale);
-
-CREATE TRIGGER trg_sfc_site_post_translations_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_post_translations FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- 4. 文章修订历史
 CREATE TABLE {schema}.sfc_site_post_revisions (
@@ -114,9 +105,6 @@ CREATE INDEX idx_sfc_site_categories_parent ON {schema}.sfc_site_categories(pare
 CREATE INDEX idx_sfc_site_categories_path   ON {schema}.sfc_site_categories(path);
 CREATE INDEX idx_sfc_site_categories_slug   ON {schema}.sfc_site_categories(parent_id, slug);
 
-CREATE TRIGGER trg_sfc_site_categories_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 -- 6. 标签表
 CREATE TABLE {schema}.sfc_site_tags (
     id          UUID PRIMARY KEY DEFAULT uuidv7(),
@@ -124,8 +112,6 @@ CREATE TABLE {schema}.sfc_site_tags (
     slug        VARCHAR(200) NOT NULL UNIQUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE INDEX idx_sfc_site_tags_name_trgm ON {schema}.sfc_site_tags USING gin(name gin_trgm_ops);
 
 -- 7. 文章-分类 多对多
 CREATE TABLE {schema}.sfc_site_post_category_map (
@@ -153,7 +139,7 @@ CREATE TABLE {schema}.sfc_site_media_files (
     file_name       VARCHAR(500) NOT NULL,
     original_name   VARCHAR(500) NOT NULL,
     mime_type       VARCHAR(100) NOT NULL,
-    media_type      media_type NOT NULL DEFAULT 'other',
+    media_type      SMALLINT NOT NULL DEFAULT 5 CHECK (media_type BETWEEN 1 AND 5),
     file_size       BIGINT NOT NULL,
     width           INT,
     height          INT,
@@ -175,10 +161,6 @@ ALTER TABLE {schema}.sfc_site_posts
 
 CREATE INDEX idx_sfc_site_media_uploader  ON {schema}.sfc_site_media_files(uploader_id);
 CREATE INDEX idx_sfc_site_media_type      ON {schema}.sfc_site_media_files(media_type) WHERE deleted_at IS NULL;
-CREATE INDEX idx_sfc_site_media_name_trgm ON {schema}.sfc_site_media_files USING gin(file_name gin_trgm_ops);
-
-CREATE TRIGGER trg_sfc_site_media_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_media_files FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- 10. 评论表
 CREATE TABLE {schema}.sfc_site_comments (
@@ -192,7 +174,7 @@ CREATE TABLE {schema}.sfc_site_comments (
     author_ip     INET,
     user_agent    TEXT,
     content       TEXT NOT NULL,
-    status        comment_status NOT NULL DEFAULT 'pending',
+    status        SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 4),
     is_pinned     BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -208,13 +190,10 @@ CREATE INDEX idx_sfc_site_comments_post_status ON {schema}.sfc_site_comments(pos
 CREATE INDEX idx_sfc_site_comments_parent      ON {schema}.sfc_site_comments(parent_id)
     WHERE parent_id IS NOT NULL;
 CREATE INDEX idx_sfc_site_comments_moderation  ON {schema}.sfc_site_comments(status, created_at DESC)
-    WHERE status = 'pending' AND deleted_at IS NULL;
+    WHERE status = 1 AND deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_comments_email       ON {schema}.sfc_site_comments(author_email);
 CREATE INDEX idx_sfc_site_comments_user        ON {schema}.sfc_site_comments(user_id)
     WHERE user_id IS NOT NULL AND deleted_at IS NULL;
-
-CREATE TRIGGER trg_sfc_site_comments_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_comments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- 11. 导航菜单表
 CREATE TABLE {schema}.sfc_site_menus (
@@ -226,9 +205,6 @@ CREATE TABLE {schema}.sfc_site_menus (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TRIGGER trg_sfc_site_menus_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_menus FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 -- 12. 菜单项表
 CREATE TABLE {schema}.sfc_site_menu_items (
     id            UUID PRIMARY KEY DEFAULT uuidv7(),
@@ -237,7 +213,7 @@ CREATE TABLE {schema}.sfc_site_menu_items (
     label         VARCHAR(200) NOT NULL,
     url           TEXT,
     target        VARCHAR(10) NOT NULL DEFAULT '_self',
-    type          menu_item_type NOT NULL DEFAULT 'custom',
+    type          SMALLINT NOT NULL DEFAULT 1 CHECK (type BETWEEN 1 AND 5),
     reference_id  UUID,
     sort_order    INT NOT NULL DEFAULT 0,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
@@ -250,9 +226,6 @@ CREATE INDEX idx_sfc_site_menu_items_parent    ON {schema}.sfc_site_menu_items(p
     WHERE parent_id IS NOT NULL;
 CREATE INDEX idx_sfc_site_menu_items_reference ON {schema}.sfc_site_menu_items(type, reference_id)
     WHERE reference_id IS NOT NULL;
-
-CREATE TRIGGER trg_sfc_site_menu_items_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_menu_items FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- 13. URL 重定向表
 CREATE TABLE {schema}.sfc_site_redirects (
@@ -272,9 +245,6 @@ CREATE TABLE {schema}.sfc_site_redirects (
 CREATE INDEX idx_sfc_site_redirects_source ON {schema}.sfc_site_redirects(source_path)
     WHERE is_active = TRUE;
 CREATE INDEX idx_sfc_site_redirects_created ON {schema}.sfc_site_redirects(created_at DESC);
-
-CREATE TRIGGER trg_sfc_site_redirects_updated_at
-    BEFORE UPDATE ON {schema}.sfc_site_redirects FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- 14. 草稿预览令牌表
 CREATE TABLE {schema}.sfc_site_preview_tokens (
@@ -314,7 +284,7 @@ CREATE TABLE {schema}.sfc_site_audits (
     id                UUID NOT NULL DEFAULT uuidv7(),
     actor_id          UUID REFERENCES public.sfc_users(id),
     actor_email       VARCHAR(255),
-    action            log_action NOT NULL,
+    action            SMALLINT NOT NULL CHECK (action BETWEEN 1 AND 11),
     resource_type     VARCHAR(50) NOT NULL,
     resource_id       TEXT,
     resource_snapshot JSONB,

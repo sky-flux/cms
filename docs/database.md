@@ -39,6 +39,7 @@ erDiagram
         jsonb   settings
         timestamptz created_at
         timestamptz updated_at
+        timestamptz deleted_at
     }
 
     sfc_roles {
@@ -133,6 +134,15 @@ erDiagram
         timestamptz updated_at
     }
 
+    sfc_password_reset_tokens {
+        uuid    id          PK "uuidv7()"
+        uuid    user_id     FK
+        varchar token_hash  UK
+        timestamptz expires_at
+        timestamptz used_at
+        timestamptz created_at
+    }
+
     sfc_configs {
         varchar key   PK
         jsonb   value
@@ -146,7 +156,7 @@ erDiagram
         uuid    author_id      FK "public.sfc_users"
         uuid    cover_image_id FK "sfc_site_media_files"
         varchar post_type
-        enum    status
+        smallint status
         varchar title
         varchar slug           UK
         text    excerpt
@@ -219,7 +229,7 @@ erDiagram
         varchar file_name
         varchar original_name
         varchar mime_type
-        enum    media_type
+        smallint media_type
         bigint  file_size
         int     width
         int     height
@@ -246,7 +256,7 @@ erDiagram
         inet    author_ip
         text    user_agent
         text    content
-        enum    status
+        smallint status
         boolean is_pinned
         timestamptz created_at
         timestamptz updated_at
@@ -269,7 +279,7 @@ erDiagram
         varchar label
         text    url
         varchar target
-        enum    type
+        smallint type
         uuid    reference_id
         int     sort_order
         boolean is_active
@@ -317,7 +327,7 @@ erDiagram
         uuid    id            PK "uuidv7()"
         uuid    actor_id      FK "public.sfc_users"
         varchar actor_email
-        enum    action
+        smallint action
         varchar resource_type
         text    resource_id
         jsonb   resource_snapshot
@@ -370,6 +380,7 @@ erDiagram
     sfc_menus            ||--o{ sfc_role_template_menus    : "in template"
     %% --- 认证关系 ---
     sfc_users                  ||--o{ sfc_refresh_tokens         : "has"
+    sfc_users                  ||--o{ sfc_password_reset_tokens  : "resets"
     sfc_users                  ||--o| sfc_user_totp              : "has 2FA"
     sfc_users                  ||--o{ sfc_site_posts             : "authors"
     sfc_users                  ||--o{ sfc_site_post_revisions    : "edits"
@@ -405,18 +416,15 @@ erDiagram
 -- 全文搜索由 Meilisearch 独立服务承担，不在 PostgreSQL 层实现
 
 -- ============================================
--- 枚举类型（在 public schema 中创建，所有 site schema 通过 search_path 共享）
+-- 枚举值映射（SMALLINT 常量定义，参见 internal/model/enums.go）
 -- ============================================
-CREATE TYPE post_status    AS ENUM ('draft', 'scheduled', 'published', 'archived');
-CREATE TYPE media_type     AS ENUM ('image', 'video', 'audio', 'document', 'other');
--- audio: 预留供将来使用；当前不作为支持的上传类型
-CREATE TYPE comment_status AS ENUM ('pending', 'approved', 'spam', 'trash');
-CREATE TYPE menu_item_type AS ENUM ('custom', 'post', 'category', 'tag', 'page');
-CREATE TYPE log_action     AS ENUM (
-    'create', 'update', 'delete', 'restore',
-    'login', 'logout', 'publish', 'unpublish',
-    'archive', 'password_change', 'settings_change'
-);
+-- post_status:    1=draft, 2=scheduled, 3=published, 4=archived
+-- media_type:     1=image, 2=video, 3=audio, 4=document, 5=other
+-- comment_status: 1=pending, 2=approved, 3=spam, 4=trash
+-- menu_item_type: 1=custom, 2=post, 3=category, 4=tag, 5=page
+-- log_action:     1=create, 2=update, 3=delete, 4=restore,
+--                 5=login, 6=logout, 7=publish, 8=unpublish,
+--                 9=archive, 10=password_change, 11=settings_change
 
 -- ============================================
 -- 公共触发器函数（所有 schema 共享）
@@ -481,6 +489,7 @@ CREATE TABLE public.sfc_sites (
     settings        JSONB        NOT NULL DEFAULT '{}',
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMPTZ,
 
     -- slug 必须匹配 schema 命名规则
     CONSTRAINT chk_sfc_sites_slug CHECK (slug ~ '^[a-z0-9_]{3,50}$')
@@ -660,7 +669,25 @@ CREATE TRIGGER trg_sfc_user_totp_updated_at
     BEFORE UPDATE ON public.sfc_user_totp FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================
--- 14. 系统配置表（全局级别）
+-- 14. 密码重置令牌表（全局）
+-- ============================================
+-- 用于"忘记密码"流程，存储 SHA-256 哈希令牌，有效期 30 分钟，单次使用
+CREATE TABLE public.sfc_password_reset_tokens (
+    id          UUID PRIMARY KEY DEFAULT uuidv7(),
+    user_id     UUID NOT NULL REFERENCES public.sfc_users(id) ON DELETE CASCADE,
+    token_hash  VARCHAR(255) NOT NULL UNIQUE,     -- SHA-256(raw_token)
+    expires_at  TIMESTAMPTZ NOT NULL,             -- NOW() + 30min
+    used_at     TIMESTAMPTZ,                      -- NULL 表示未使用，非 NULL 表示已使用
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_sfc_prt_user    ON public.sfc_password_reset_tokens(user_id);
+CREATE INDEX idx_sfc_prt_token   ON public.sfc_password_reset_tokens(token_hash);
+CREATE INDEX idx_sfc_prt_expires ON public.sfc_password_reset_tokens(expires_at)
+    WHERE used_at IS NULL;
+
+-- ============================================
+-- 15. 系统配置表（全局级别）
 -- ============================================
 -- 全局系统配置（如安装标志），与各站点 schema 中的 sfc_site_configs 表分开
 CREATE TABLE public.sfc_configs (
@@ -723,7 +750,7 @@ CREATE TABLE {schema}.sfc_site_posts (
     author_id       UUID NOT NULL REFERENCES public.sfc_users(id),
     cover_image_id  UUID,                                      -- FK 在 sfc_site_media_files 创建后添加
     post_type       VARCHAR(50) NOT NULL DEFAULT 'article',    -- article/page/product
-    status          post_status NOT NULL DEFAULT 'draft',
+    status          SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 4),
 
     -- 内容字段（默认语言，zh-CN）
     title           VARCHAR(500) NOT NULL,
@@ -879,7 +906,7 @@ CREATE TABLE {schema}.sfc_site_media_files (
     file_name       VARCHAR(500) NOT NULL,
     original_name   VARCHAR(500) NOT NULL,
     mime_type       VARCHAR(100) NOT NULL,
-    media_type      media_type NOT NULL DEFAULT 'other',
+    media_type      SMALLINT NOT NULL DEFAULT 5 CHECK (media_type BETWEEN 1 AND 5),
     file_size       BIGINT NOT NULL,              -- bytes
     width           INT,                          -- 图片宽度 px
     height          INT,                          -- 图片高度 px
@@ -931,7 +958,7 @@ CREATE TABLE {schema}.sfc_site_comments (
     author_ip     INET,
     user_agent    TEXT,
     content       TEXT NOT NULL,
-    status        comment_status NOT NULL DEFAULT 'pending',
+    status        SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 4),
     is_pinned     BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -986,7 +1013,7 @@ CREATE TABLE {schema}.sfc_site_menu_items (
     label         VARCHAR(200) NOT NULL,
     url           TEXT,
     target        VARCHAR(10) NOT NULL DEFAULT '_self',
-    type          menu_item_type NOT NULL DEFAULT 'custom',
+    type          SMALLINT NOT NULL DEFAULT 1 CHECK (type BETWEEN 1 AND 5),
     reference_id  UUID,                            -- 指向 post/category/tag 的 FK（按 type 解析）
     sort_order    INT NOT NULL DEFAULT 0,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
@@ -1073,7 +1100,7 @@ CREATE TABLE {schema}.sfc_site_audits (
     id                UUID NOT NULL DEFAULT uuidv7(),
     actor_id          UUID REFERENCES public.sfc_users(id),
     actor_email       VARCHAR(255),                    -- 冗余，防止用户被删后日志丢失
-    action            log_action NOT NULL,
+    action            SMALLINT NOT NULL CHECK (action BETWEEN 1 AND 11),
     resource_type     VARCHAR(50) NOT NULL,             -- post/user/media/category/comment/menu...
     resource_id       TEXT,
     resource_snapshot JSONB,                            -- 操作时的资源快照
@@ -1249,6 +1276,7 @@ ON CONFLICT (key) DO UPDATE SET value = 'true';
 # ============================================
 auth:blacklist:{jti}                     TTL=token剩余时间   -- 登出黑名单（jti = JWT Token ID）
 login_fail:{email}                       TTL=900s            -- 登录失败计数
+password_reset:{email}                   TTL=300s            -- 密码重置限流（1 次/5 分钟/邮箱）
 system:installed                         TTL=indefinite      -- 安装标志
 
 # 2FA 相关（全局，用户级别，无站点前缀）
@@ -1343,10 +1371,10 @@ site:{slug}:comment:dedup:{sha256}       TTL=3600s           -- 重复评论检�
 
 ```
 migrations/
-├── 20260224000001_create_enums_and_functions.go    -- 枚举类型 + update_updated_at() 函数（无 user_role ENUM）
-├── 20260224000002_create_public_schema.go          -- 全部 public 表：sfc_users, sfc_sites, 9 张 RBAC 表, sfc_refresh_tokens, sfc_user_totp, sfc_configs
-├── 20260224000003_create_site_template.go          -- 占位符（站点 schema 由 internal/schema 动态创建）
-├── 20260224000004_seed_rbac_builtins.go            -- Seed 4 内置角色 + 4 内置权限模板
+├── 20260224000001_create_core_tables.go        -- sfc_users, sfc_sites, sfc_refresh_tokens, sfc_password_reset_tokens, sfc_user_totp, sfc_configs
+├── 20260224000002_create_rbac_tables.go        -- sfc_roles + sfc_user_roles + sfc_apis + sfc_role_apis + sfc_menus + sfc_role_menus + sfc_role_templates + sfc_role_template_apis + sfc_role_template_menus
+├── 20260224000003_site_schema_placeholder.go   -- 占位符（站点 schema 由 internal/schema 动态创建）
+├── 20260224000004_seed_rbac_builtins.go        -- Seed 4 内置角色 + 4 内置权限模板
 └── ...
 ```
 
