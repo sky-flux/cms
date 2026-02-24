@@ -185,9 +185,9 @@ bun dev
    - **管理员显示名**
    - **语言区域**（默认 `zh-CN`）
 3. 点击提交，向导会在单个事务中完成：
-   - 创建 `public` 模式表（sfc_users、sfc_sites、sfc_site_user_roles 等）
+   - 创建 `public` 模式表（sfc_users、sfc_sites、sfc_roles、sfc_user_roles 等 RBAC 表）
    - 创建首个站点记录和对应的 `site_{slug}` 模式
-   - 创建管理员账号并赋予 `superadmin` 角色
+   - 创建管理员账号并赋予 `super` 角色（通过 sfc_user_roles 分配）
    - 设置 `system.installed = true` 标记
 4. 初始化完成后自动跳转到 `/admin` 管理后台
 
@@ -950,8 +950,9 @@ go run ./cmd/cms migrate init
 migrations/
 ├── main.go                                       -- 迁移注册表 (migrate.NewMigrations())
 ├── 20260224000001_create_enums_and_functions.go   -- 枚举类型 + update_updated_at() 函数
-├── 20260224000002_create_public_schema.go         -- sfc_users, sfc_sites, sfc_site_user_roles 等
+├── 20260224000002_create_public_schema.go         -- sfc_users, sfc_sites, 9 张 RBAC 表, sfc_refresh_tokens 等
 ├── 20260224000003_create_site_template.go         -- 占位符（站点 schema 由 internal/schema/ 动态创建）
+├── 20260224000004_seed_rbac_builtins.go           -- Seed 4 内置角色 + 4 内置权限模板
 └── ...
 ```
 

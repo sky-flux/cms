@@ -290,16 +290,19 @@ func TestJWTMiddleware(t *testing.T) {
 }
 
 func TestRBACMiddleware(t *testing.T) {
+    // RBAC 中间件通过 sfc_role_apis 动态匹配 API 权限，
+    // 不再使用硬编码的 RequireRole(...) 检查
     tests := []struct {
         name       string
         userRole   string
-        required   []string
+        method     string
+        path       string
         shouldPass bool
     }{
-        {"superadmin 访问 admin 接口", "superadmin", []string{"admin"}, true},
-        {"editor 访问 editor 接口", "editor", []string{"editor", "admin"}, true},
-        {"viewer 访问 editor 接口", "viewer", []string{"editor", "admin"}, false},
-        {"editor 访问 superadmin 接口", "editor", []string{"superadmin"}, false},
+        {"super 访问用户管理接口", "super", "GET", "/api/v1/users", true},
+        {"admin 访问用户管理接口", "admin", "GET", "/api/v1/users", false},
+        {"editor 访问文章接口", "editor", "POST", "/api/v1/posts", true},
+        {"viewer 访问文章接口", "viewer", "POST", "/api/v1/posts", false},
     }
 
     for _, tt := range tests {
@@ -307,8 +310,10 @@ func TestRBACMiddleware(t *testing.T) {
             w := httptest.NewRecorder()
             c, _ := gin.CreateTestContext(w)
             c.Set("user_role", tt.userRole)
+            c.Request = httptest.NewRequest(tt.method, tt.path, nil)
 
-            RequireRole(tt.required...)(c)
+            // RBAC 中间件根据 sfc_role_apis 表动态匹配
+            RBACMiddleware()(c)
 
             assert.Equal(t, !tt.shouldPass, c.IsAborted())
         })
@@ -403,7 +408,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
     return &TestEnv{DB: db, Redis: redisClient, Router: router}
 }
 
-// CreateTestSite 创建测试用站点 schema，包含所有 per-site 表
+// CreateTestSite 创建测试用站点 schema，包含所有站点级别表
 func CreateTestSite(t *testing.T, db *bun.DB, slug string) {
     t.Helper()
     ctx := context.Background()
@@ -412,7 +417,7 @@ func CreateTestSite(t *testing.T, db *bun.DB, slug string) {
         "INSERT INTO public.sfc_sites (name, slug, is_active) VALUES ($1, $2, TRUE)",
         "Test Site "+slug, slug)
     require.NoError(t, err)
-    // 创建 site schema 和所有 per-site 表
+    // 创建 site schema 和所有站点级别表
     err = schema.CreateSiteSchema(ctx, db, slug)
     require.NoError(t, err)
 }
@@ -602,10 +607,10 @@ func TestRBAC_Integration(t *testing.T) {
     env := SetupTestEnv(t)
 
     tokens := map[string]string{
-        "superadmin": loginAs(t, env, "superadmin"),
-        "admin":      loginAs(t, env, "admin"),
-        "editor":     loginAs(t, env, "editor"),
-        "viewer":     loginAs(t, env, "viewer"),
+        "super":  loginAs(t, env, "super"),
+        "admin":  loginAs(t, env, "admin"),
+        "editor": loginAs(t, env, "editor"),
+        "viewer": loginAs(t, env, "viewer"),
     }
 
     tests := []struct {
@@ -614,16 +619,16 @@ func TestRBAC_Integration(t *testing.T) {
         roles    map[string]int // role -> expected status code
     }{
         {"POST", "/api/v1/posts", map[string]int{
-            "superadmin": 201, "admin": 201, "editor": 201, "viewer": 403,
+            "super": 201, "admin": 201, "editor": 201, "viewer": 403,
         }},
         {"POST", "/api/v1/users", map[string]int{
-            "superadmin": 201, "admin": 403, "editor": 403, "viewer": 403,
+            "super": 201, "admin": 403, "editor": 403, "viewer": 403,
         }},
         {"POST", "/api/v1/categories", map[string]int{
-            "superadmin": 201, "admin": 201, "editor": 403, "viewer": 403,
+            "super": 201, "admin": 201, "editor": 403, "viewer": 403,
         }},
         {"GET", "/api/v1/posts", map[string]int{
-            "superadmin": 200, "admin": 200, "editor": 200, "viewer": 200,
+            "super": 200, "admin": 200, "editor": 200, "viewer": 200,
         }},
     }
 
@@ -1015,7 +1020,7 @@ export default function () {
 | POST-008 | 回滚到历史版本 | 集成 | 文章内容恢复，新增回滚修订记录 |
 | POST-009 | 软删除文章 | 集成 | deleted_at 设置，默认查询不可见 |
 | POST-010 | 恢复已删除文章 | 集成 | deleted_at 清空，恢复为 draft 状态 |
-| POST-011 | 全文检索（中文） | 集成 | PostgreSQL FTS 返回相关结果 |
+| POST-011 | 全文检索（中文） | 集成 | Meilisearch 返回相关结果 |
 | POST-012 | 分页查询边界 | 单元+集成 | 第一页/最后一页/超出范围正确处理 |
 | POST-013 | 联合筛选（状态+分类+标签） | 集成 | 返回满足所有条件的文章 |
 | POST-014 | XSS 内容过滤 | 单元 | `<script>` 标签被过滤 |
@@ -1069,8 +1074,8 @@ export default function () {
 | 用例编号 | 测试场景 | 测试类型 | 预期结果 |
 |----------|----------|----------|----------|
 | SYS-001 | Admin 获取系统配置列表 | 集成 | 返回 200，包含所有配置项 |
-| SYS-002 | SuperAdmin 更新配置项 | 集成 | 返回 200，值已更新，Redis 缓存同步刷新 |
-| SYS-003 | Admin 尝试更新配置（非 SuperAdmin） | 集成 | 返回 403 Forbidden |
+| SYS-002 | 超级管理员更新配置项 | 集成 | 返回 200，值已更新，Redis 缓存同步刷新 |
+| SYS-003 | Admin 尝试更新配置（非超级管理员） | 集成 | 返回 403 Forbidden |
 | SYS-004 | Editor 访问系统配置 | 集成 | 返回 403 Forbidden |
 | SYS-005 | 更新不存在的配置项 | 集成 | 返回 404 Not Found |
 
@@ -1078,7 +1083,7 @@ export default function () {
 
 | 用例编号 | 测试场景 | 测试类型 | 预期结果 |
 |----------|----------|----------|----------|
-| AUDIT-001 | SuperAdmin 查询审计日志 | 集成 | 返回 200，支持分页 |
+| AUDIT-001 | 超级管理员查询审计日志 | 集成 | 返回 200，支持分页 |
 | AUDIT-002 | 按操作人筛选审计日志 | 集成 | 仅返回指定 actor_id 的日志 |
 | AUDIT-003 | 按操作类型筛选（create/update/delete） | 集成 | 仅返回指定 action 的日志 |
 | AUDIT-004 | 按时间范围筛选 | 集成 | 仅返回 start_date 和 end_date 之间的日志 |
@@ -1135,10 +1140,10 @@ export default function () {
 
 | 用例编号 | 测试场景 | 测试类型 | 预期结果 |
 |----------|----------|----------|----------|
-| SITE-001 | 创建新站点 | 集成 | POST /api/v1/admin/sites → schema `site_{slug}` 创建成功，包含所有 per-site 表（sfc_site_posts, sfc_site_categories, sfc_site_tags, sfc_site_menus, sfc_site_comments, sfc_site_redirects, sfc_site_preview_tokens, sfc_site_api_keys, sfc_site_audits, sfc_site_configs, sfc_site_post_types） |
-| SITE-002 | 删除站点 | 集成 | DELETE /api/v1/admin/sites/:id { confirm_slug } → schema 被 DROP CASCADE，sfc_site_user_roles 清理，public.sfc_sites 记录删除 |
+| SITE-001 | 创建新站点 | 集成 | POST /api/v1/sites → schema `site_{slug}` 创建成功，包含所有站点级别表（sfc_site_posts, sfc_site_categories, sfc_site_tags, sfc_site_menus, sfc_site_comments, sfc_site_redirects, sfc_site_preview_tokens, sfc_site_api_keys, sfc_site_audits, sfc_site_configs, sfc_site_post_types） |
+| SITE-002 | 删除站点 | 集成 | DELETE /api/v1/sites/:slug { confirm_slug } → schema 被 DROP CASCADE，sfc_user_roles 清理，public.sfc_sites 记录删除 |
 | SITE-003 | Schema 隔离 — 数据不可见 | 集成 | 在 site_a 中创建文章，设置 search_path 为 site_b → 查询 sfc_site_posts 返回空结果，site_a 的数据在 site_b 中不可见 |
-| SITE-004 | Per-site 角色分配 | 集成 | 用户在 site_a 为 Admin，在 site_b 为 Editor → 请求 site_a 时 role=admin，请求 site_b 时 role=editor，权限各自独立 |
+| SITE-004 | 全局角色分配 | 集成 | 用户通过 `sfc_user_roles` 分配全局角色 → RBAC 中间件根据 `sfc_role_apis` 动态匹配 API 权限，角色权限全局生效 |
 | SITE-005 | 域名映射 | 集成 | Host header 为 blog.example.com → SiteResolverMiddleware 正确解析到对应站点，SchemaMiddleware 设置正确的 search_path |
 | SITE-006 | 无效站点 slug | 集成 | 请求不存在的站点 slug → 返回 404 NOT_FOUND |
 
@@ -1147,7 +1152,7 @@ export default function () {
 | 用例编号 | 测试场景 | 测试类型 | 预期结果 |
 |----------|----------|----------|----------|
 | SETUP-001 | 全新安装检查 | 集成 | POST /api/v1/setup/check → 返回 `{ "installed": false }` |
-| SETUP-002 | 执行初始化 | 集成 | POST /api/v1/setup/initialize { site_name, site_slug, admin_email, admin_password, ... } → 创建 public schema 表 + 第一个站点 schema + admin 用户 + sfc_site_user_roles(superadmin) + 返回 JWT access_token |
+| SETUP-002 | 执行初始化 | 集成 | POST /api/v1/setup/initialize { site_name, site_slug, admin_email, admin_password, ... } → 创建 public schema 表 + 第一个站点 schema + admin 用户 + sfc_user_roles(super) + 返回 JWT access_token |
 | SETUP-003 | 安装后端点禁用 | 集成 | 安装完成后，POST /api/v1/setup/initialize → 返回 409 ALREADY_INSTALLED；POST /api/v1/setup/check → 返回 `{ "installed": true }` |
 | SETUP-004 | 并发安装竞争 | 集成 | 两个并发请求同时调用 /api/v1/setup/initialize → 只有一个成功（PostgreSQL advisory lock），另一个返回 409 ALREADY_INSTALLED |
 
@@ -1211,7 +1216,7 @@ export default function () {
 | 2FA-005 | 验证频率限制 | 集成 | 5 分钟内第 6 次验证尝试 → 返回 429 RATE_LIMITED |
 | 2FA-006 | 备用码一次性使用 | 集成 | 使用有效 backup_code 登录成功 → 同一 backup_code 再次使用 → 返回 400 INVALID_CODE（已消费） |
 | 2FA-007 | 禁用 2FA 需要密码和 TOTP | 集成 | POST /api/v1/auth/2fa/disable { password, code } → 两者都正确时返回 200，user_totp 记录删除 |
-| 2FA-008 | SuperAdmin 强制禁用 | 集成 | DELETE /api/v1/users/:id/2fa { reason } → 返回 200，目标用户 2FA 被禁用，所有 refresh_token 被撤销，audit_log 记录原因 |
+| 2FA-008 | 超级管理员强制禁用 | 集成 | DELETE /api/v1/auth/2fa/users/:user_id { reason } → 返回 200，目标用户 2FA 被禁用，所有 refresh_token 被撤销，audit_log 记录原因 |
 
 ### 7.21 Schema 隔离 E2E 测试
 
@@ -1219,7 +1224,7 @@ export default function () {
 |----------|----------|----------|----------|
 | SCHEMA-E2E-001 | 跨站点完整工作流 | E2E | 创建 site_a 和 site_b → 在 site_a 创建文章 → 在 site_b 创建文章 → 验证 site_a 的 Public API 仅返回 site_a 的文章，site_b 同理 |
 | SCHEMA-E2E-002 | 多角色跨站点用户 | E2E | 用户 U 在 site_a 为 Admin，在 site_b 为 Editor → 以 U 登录 site_a 可管理用户 → 以 U 登录 site_b 不能管理用户（403） |
-| SCHEMA-E2E-003 | 迁移应用到所有 schema | 集成 | 新增 per-site 迁移 → `go run ./cmd/cms migrate up` → 验证所有已存在的 site schema 均已应用变更 |
+| SCHEMA-E2E-003 | 迁移应用到所有 schema | 集成 | 新增站点级别迁移 → `go run ./cmd/cms migrate up` → 验证所有已存在的 site schema 均已应用变更 |
 
 ---
 

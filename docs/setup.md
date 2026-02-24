@@ -333,7 +333,7 @@ make migrate-status
 # 通过安装向导创建第一个站点
 open http://localhost:3000/setup
 
-# 通过 API 创建更多站点（需 SuperAdmin Token）
+# 通过 API 创建更多站点（需 Super 角色 Token）
 curl -X POST http://localhost:8080/api/v1/sites \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \

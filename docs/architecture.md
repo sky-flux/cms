@@ -19,7 +19,7 @@ flowchart TB
         NG["Nginx\nHTTPS 终结 | 负载均衡 | 静态文件"]
     end
 
-    subgraph API["Gin API Server  (Go 1.24+)"]
+    subgraph API["Gin API Server  (Go 1.25+)"]
         direction TB
         subgraph MW["Middleware Chain"]
             direction LR
@@ -36,7 +36,7 @@ flowchart TB
         end
         subgraph Modules["业务模块"]
             direction LR
-            AM["Auth Module\nJWT / RBAC / 2FA"]
+            AM["Auth Module\nJWT / Dynamic RBAC / 2FA"]
             CM["Content Module\nPost / Category / Tag"]
             MM["Media Module\nUpload + Process"]
             UM["User Module\nCRUD / Role"]
@@ -55,7 +55,7 @@ flowchart TB
     subgraph Storage["Storage Layer"]
         direction TB
         subgraph PGSchemas["PostgreSQL 18 (Schema Isolation)"]
-            PGPublic[("public schema\nusers / sites /\nsfc_site_user_roles /\nrefresh_tokens /\nuser_totp /\nconfigs")]
+            PGPublic[("public schema\nusers / sites / RBAC 9表 /\nrefresh_tokens /\nuser_totp /\nconfigs")]
             PGSite1[("site_{slug} schema\nsfc_site_posts / sfc_site_categories /\nsfc_site_tags / sfc_site_media_files /\nsfc_site_comments / sfc_site_menus /\nsfc_site_redirects / sfc_site_preview_tokens /\nsfc_site_api_keys / sfc_site_audits /\nsfc_site_configs")]
             PGSiteN[("site_{slug_n} ...\n(identical structure)")]
         end
@@ -83,14 +83,15 @@ flowchart LR
         IG["InstallationGuard\n已安装? → 继续"]
         SR["SiteResolver\nHost → slug=blog"]
         SC["SchemaMiddleware\nSET search_path TO\n'site_blog', 'public'"]
-        AUTH["AuthMiddleware\nJWT → user_id\nRole from sfc_site_user_roles"]
+        AUTH["AuthMiddleware\nJWT → user_id\nRole from sfc_user_roles (global)"]
+        RBAC["RBACMiddleware\nCheck sfc_role_apis\n(two-level cache)"]
     end
 
     subgraph Handler["Route Handler"]
         H["PostHandler.List()\nSELECT * FROM sfc_site_posts\n(resolves to site_blog.sfc_site_posts)"]
     end
 
-    REQ --> IG --> SR --> SC --> AUTH --> H
+    REQ --> IG --> SR --> SC --> AUTH --> RBAC --> H
 
     style SC fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
 ```
@@ -102,7 +103,15 @@ PostgreSQL Database
 ├── public (global schema)
 │   ├── sfc_users              -- all user accounts
 │   ├── sfc_sites              -- site registry (slug → schema mapping)
-│   ├── sfc_site_user_roles        -- per-site role assignments
+│   ├── sfc_roles              -- 角色定义（name, slug, built_in）
+│   ├── sfc_user_roles         -- 全局用户-角色分配（user_id, role_id）
+│   ├── sfc_apis               -- API 端点注册（method, path, group，启动时自动同步）
+│   ├── sfc_role_apis          -- 角色-API 权限映射
+│   ├── sfc_menus              -- 后台管理菜单（区别于 site schema 的 sfc_site_menus 导航菜单）
+│   ├── sfc_role_menus         -- 角色-菜单可见性映射
+│   ├── sfc_role_templates     -- 权限模板定义
+│   ├── sfc_role_template_apis -- 模板-API 映射
+│   ├── sfc_role_template_menus-- 模板-菜单映射
 │   ├── sfc_refresh_tokens     -- JWT refresh tokens
 │   ├── sfc_user_totp          -- 2FA TOTP secrets (AES-256-GCM encrypted)
 │   └── sfc_configs            -- global flags (e.g., system.installed)
@@ -213,6 +222,18 @@ sky-flux-cms/
 │   │   ├── service.go
 │   │   ├── repository.go
 │   │   └── dto.go
+│   ├── rbac/                            # 动态 RBAC 模块（角色 / API 权限 / 菜单 / 模板）
+│   │   ├── handler.go                   # RBAC 管理 API handlers
+│   │   ├── service.go                   # 两级 Redis 缓存 service (L1 用户角色 / L2 角色-API)
+│   │   ├── api_registry.go             # 启动时路由自动发现，同步到 sfc_apis
+│   │   ├── interfaces.go              # Repository 接口定义
+│   │   ├── dto.go                      # 请求/响应 DTO
+│   │   ├── role_repo.go               # sfc_roles CRUD
+│   │   ├── user_role_repo.go          # sfc_user_roles 用户-角色分配
+│   │   ├── api_repo.go                # sfc_apis + sfc_role_apis CRUD
+│   │   ├── role_api_repo.go           # 角色-API 映射查询
+│   │   ├── menu_repo.go              # sfc_menus + sfc_role_menus CRUD
+│   │   └── template_repo.go          # sfc_role_templates CRUD
 │   │
 │   │── ── ── 共享层（跨模块复用） ── ── ──
 │   │
@@ -239,7 +260,7 @@ sky-flux-cms/
 │   │   ├── site_resolver.go           # 站点解析（Host / X-Site-Slug → site record）
 │   │   ├── schema.go                  # Schema 切换（SET search_path TO site_{slug}, public）
 │   │   ├── auth.go                    # JWT 验证
-│   │   ├── rbac.go                    # 权限控制（per-site role from sfc_site_user_roles）
+│   │   ├── rbac.go                    # 动态 RBAC 权限控制（调用 rbac.Service.CheckPermission）
 │   │   ├── ratelimit.go              # Redis 滑动窗口限流
 │   │   ├── cors.go
 │   │   ├── request_id.go             # 请求 ID 注入
@@ -394,10 +415,10 @@ sky-flux-cms/
 |------|------|
 | Schema-per-site（非 `site_id` 共享表） | 更强的隔离性，无跨站数据泄露风险，查询无需 `WHERE site_id = ?`，`DROP SCHEMA` 即可清理 |
 | 用户全局化（`public` schema） | 单账号登录多站点 — 适合代理/自由职业者工作流 |
-| Per-site 角色（`sfc_site_user_roles`） | 同一用户可在站点 A 是 SuperAdmin，站点 B 是 Editor |
+| 全局角色（`sfc_user_roles`） | 用户拥有全局角色，通过 `sfc_role_apis` 控制 API 访问权限 |
 | 每请求 `search_path` | 查询自动解析到正确的站点 Schema；跨 Schema FK 到 `public.sfc_users(id)` 原生支持 |
 | 内容表无 `site_id` 列 | Schema 本身提供隔离，无需复合索引 |
-| JWT Claims 不携带 `role` | 角色从 `sfc_site_user_roles` 每请求解析，缓存 300s |
+| JWT Claims 不携带 `role` | 角色从 `sfc_user_roles` 每请求解析，两级缓存（L1 用户角色 300s / L2 角色-API 600s） |
 
 ### 3.4 2FA: TOTP (RFC 6238) + AES-256-GCM
 
@@ -629,11 +650,18 @@ Request (Host: blog.example.com, Authorization: Bearer <jwt>)
   │
   ├─ 4. AuthMiddleware (protected routes only)
   │     └─ Verify JWT (HS256), check blacklist in Redis
-  │     └─ Load role: Redis site:{slug}:role:{user_id} TTL=300s
-  │     └─ Fallback: SELECT role FROM sfc_site_user_roles WHERE site_id AND user_id
-  │     └─ Inject: c.Set("user_id"), c.Set("user"), c.Set("role")
+  │     └─ Inject: c.Set("user_id"), c.Set("user")
   │
-  └─ 5. Route Handler
+  ├─ 5. RBACMiddleware (protected routes only)
+  │     └─ 调用 rbac.Service.CheckPermission(ctx, userID, method, path)
+  │     └─ L1 缓存: Redis user:{user_id}:roles TTL=300s
+  │     └─ Fallback: SELECT r.slug, r.id FROM sfc_user_roles JOIN sfc_roles ON ...
+  │     └─ 若 slugs 包含 "super" → 直接放行
+  │     └─ L2 缓存: Redis role:{role_id}:api_set TTL=600s
+  │     └─ Fallback: SELECT method, path FROM sfc_role_apis JOIN sfc_apis ON ...
+  │     └─ 命中 method:path → 放行，否则 403
+  │
+  └─ 6. Route Handler
         └─ All DB queries scoped to site_{slug} schema via search_path
         └─ Cross-schema access to public.sfc_users via FK
 ```
@@ -652,7 +680,7 @@ Request (POST /api/v1/auth/login)
   │     └─ 2FA flow: password → temp token (5min) → TOTP validation → full JWT
   │
   └─ 4. JWT issued without role claim
-        └─ Role resolved per-request from sfc_site_user_roles when accessing site-scoped routes
+        └─ Role resolved per-request from sfc_user_roles via RBAC middleware (two-level cache)
 ```
 
 ---
@@ -703,27 +731,25 @@ func SetupRouter(r *gin.Engine, deps *Dependencies) {
     }
 
     // =============================================
-    // Site management (SuperAdmin, global)
+    // Site management (global, RBAC 中间件自动匹配权限)
+    // 权限通过 sfc_role_apis 动态配置，无需硬编码 RequireRole
     // =============================================
-    sites := r.Group("/api/v1/admin/sites")
-    sites.Use(InstallationGuardMiddleware(), JWTMiddleware(), RequireRole("superadmin"))
+    sites := r.Group("/api/v1/sites")
+    sites.Use(InstallationGuardMiddleware(), JWTMiddleware(), RBACMiddleware(deps.RBACService))
     {
-        sites.GET("",         handler.ListSites)
-        sites.POST("",        handler.CreateSite)
-        sites.GET("/:id",     handler.GetSite)
-        sites.PATCH("/:id",   handler.UpdateSite)
-        sites.DELETE("/:id",  handler.DeleteSite)
+        sites.GET("",          handler.ListSites)
+        sites.POST("",         handler.CreateSite)
+        sites.GET("/:slug",    handler.GetSite)
+        sites.PUT("/:slug",    handler.UpdateSite)
+        sites.DELETE("/:slug", handler.DeleteSite)
     }
 
-    // SuperAdmin: force disable 2FA for a user (global)
-    users := r.Group("/api/v1/users")
-    users.Use(InstallationGuardMiddleware(), JWTMiddleware(), RequireRole("superadmin"))
-    {
-        users.DELETE("/:id/2fa", handler.ForceDisable2FA)
-    }
+    // Force disable 2FA for a user (global, under auth group, RBAC 控制)
+    auth.DELETE("/2fa/users/:user_id", handler.ForceDisable2FA)
 
     // =============================================
-    // Site-scoped Admin API (JWT + Schema)
+    // Site-scoped Admin API (JWT + Schema + RBAC)
+    // 所有端点权限通过 sfc_role_apis 动态配置，RBAC 中间件自动匹配 method+path
     // =============================================
     api := r.Group("/api/v1")
     api.Use(
@@ -731,50 +757,40 @@ func SetupRouter(r *gin.Engine, deps *Dependencies) {
         SiteResolverMiddleware(deps.SiteRepo),
         SchemaMiddleware(deps.DB),
         JWTMiddleware(),
+        RBACMiddleware(deps.RBACService),
     )
     {
-        // Posts (Editor+)
+        // Posts
         posts := api.Group("/posts")
         {
             posts.GET("",              handler.ListPosts)
             posts.GET("/:id",          handler.GetPost)
-
-            postsWrite := posts.Group("")
-            postsWrite.Use(RequireRole("editor", "admin", "superadmin"))
-            {
-                postsWrite.POST("",                     handler.CreatePost)
-                postsWrite.PUT("/:id",                  handler.UpdatePost)
-                postsWrite.DELETE("/:id",               handler.DeletePost)
-                postsWrite.POST("/:id/preview",         handler.CreatePreviewToken)
-                postsWrite.GET("/:id/preview",          handler.ListPreviewTokens)
-                postsWrite.DELETE("/:id/preview",       handler.RevokeAllPreviewTokens)
-                postsWrite.DELETE("/:id/preview/:token_id", handler.RevokeSinglePreviewToken)
-            }
+            posts.POST("",             handler.CreatePost)
+            posts.PUT("/:id",          handler.UpdatePost)
+            posts.DELETE("/:id",       handler.DeletePost)
+            posts.POST("/:id/preview",         handler.CreatePreviewToken)
+            posts.GET("/:id/preview",          handler.ListPreviewTokens)
+            posts.DELETE("/:id/preview",       handler.RevokeAllPreviewTokens)
+            posts.DELETE("/:id/preview/:token_id", handler.RevokeSinglePreviewToken)
         }
 
         // Categories, Tags, Media (existing)
         // ...
 
-        // Comments (Editor+ for moderation)
+        // Comments
         comments := api.Group("/comments")
         {
             comments.GET("",                handler.ListComments)
             comments.GET("/:id",            handler.GetComment)
-
-            commentsWrite := comments.Group("")
-            commentsWrite.Use(RequireRole("editor", "admin", "superadmin"))
-            {
-                commentsWrite.PUT("/:id/status",    handler.UpdateCommentStatus)
-                commentsWrite.PUT("/:id/pin",       handler.ToggleCommentPin)
-                commentsWrite.POST("/:id/reply",    handler.AdminReplyComment)
-                commentsWrite.PUT("/batch-status",  handler.BatchUpdateCommentStatus)
-                commentsWrite.DELETE("/:id",        handler.DeleteComment)
-            }
+            comments.PUT("/:id/status",     handler.UpdateCommentStatus)
+            comments.PUT("/:id/pin",        handler.ToggleCommentPin)
+            comments.POST("/:id/reply",     handler.AdminReplyComment)
+            comments.PUT("/batch-status",   handler.BatchUpdateCommentStatus)
+            comments.DELETE("/:id",         handler.DeleteComment)
         }
 
-        // Menus (Admin+)
+        // Menus
         menus := api.Group("/menus")
-        menus.Use(RequireRole("admin", "superadmin"))
         {
             menus.GET("",                       handler.ListMenus)
             menus.POST("",                      handler.CreateMenu)
@@ -787,15 +803,14 @@ func SetupRouter(r *gin.Engine, deps *Dependencies) {
             menus.PUT("/:id/items/reorder",     handler.ReorderMenuItems)
         }
 
-        // Redirects (Admin+)
+        // Redirects
         redirects := api.Group("/redirects")
-        redirects.Use(RequireRole("admin", "superadmin"))
         {
             redirects.GET("",              handler.ListRedirects)
             redirects.POST("",             handler.CreateRedirect)
             redirects.PUT("/:id",          handler.UpdateRedirect)
             redirects.DELETE("/:id",       handler.DeleteRedirect)
-            redirects.POST("/bulk-delete", handler.BulkDeleteRedirects)
+            redirects.DELETE("/batch",      handler.BulkDeleteRedirects)
             redirects.POST("/import",      handler.ImportRedirects)
             redirects.GET("/export",       handler.ExportRedirects)
         }

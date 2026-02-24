@@ -25,7 +25,8 @@ Request
   -> InstallationGuardMiddleware   (未安装? -> 重定向至 /setup 或 503)
   -> SiteResolverMiddleware        (从 Host / X-Site-Slug 解析站点)
   -> SchemaMiddleware              (SET search_path TO 'site_{slug}', 'public')
-  -> AuthMiddleware                (验证 JWT，从 sfc_site_user_roles 加载角色)
+  -> AuthMiddleware                (验证 JWT)
+  -> RBACMiddleware                 (从 sfc_user_roles 加载角色，两级 Redis 缓存，动态匹配 sfc_role_apis)
   -> Route Handler                 (所有查询自动限定在站点 Schema 内)
 ```
 
@@ -52,20 +53,48 @@ Request
 | POST | /api/v1/auth/2fa/disable | JWT | 禁用 2FA |
 | POST | /api/v1/auth/2fa/backup-codes | JWT | 重新生成备用码 |
 | GET | /api/v1/auth/2fa/status | JWT | 获取 2FA 状态 |
-| DELETE | /api/v1/auth/2fa/users/:user_id | SuperAdmin | 强制禁用用户 2FA |
+| DELETE | /api/v1/auth/2fa/users/:user_id | Super | 强制禁用用户 2FA |
 
-#### 站点管理端点（SuperAdmin，无需站点上下文）
+#### 站点管理端点（Super，无需站点上下文）
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | /api/v1/sites | SuperAdmin | 站点列表 |
-| POST | /api/v1/sites | SuperAdmin | 创建站点 |
-| GET | /api/v1/sites/:slug | SuperAdmin | 站点详情 |
-| PUT | /api/v1/sites/:slug | SuperAdmin | 更新站点 |
-| DELETE | /api/v1/sites/:slug | SuperAdmin | 删除站点 |
-| GET | /api/v1/sites/:slug/users | SuperAdmin | 站点用户列表 |
-| PUT | /api/v1/sites/:slug/users/:user_id/role | SuperAdmin | 分配用户站点角色 |
-| DELETE | /api/v1/sites/:slug/users/:user_id/role | SuperAdmin | 移除用户站点角色 |
+| GET | /api/v1/sites | Super | 站点列表 |
+| POST | /api/v1/sites | Super | 创建站点 |
+| GET | /api/v1/sites/:slug | Super | 站点详情 |
+| PUT | /api/v1/sites/:slug | Super | 更新站点 |
+| DELETE | /api/v1/sites/:slug | Super | 删除站点 |
+| GET | /api/v1/sites/:slug/users | Super | 站点用户列表 |
+| PUT | /api/v1/sites/:slug/users/:user_id/role | Super | 分配用户站点角色 |
+| DELETE | /api/v1/sites/:slug/users/:user_id/role | Super | 移除用户站点角色 |
+
+#### RBAC 管理端点（Super，无需站点上下文）
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | /api/v1/rbac/roles | Super | 角色列表 |
+| POST | /api/v1/rbac/roles | Super | 创建角色 |
+| GET | /api/v1/rbac/roles/:id | Super | 角色详情 |
+| PUT | /api/v1/rbac/roles/:id | Super | 更新角色 |
+| DELETE | /api/v1/rbac/roles/:id | Super | 删除角色 |
+| GET | /api/v1/rbac/roles/:id/apis | Super | 角色 API 权限列表 |
+| PUT | /api/v1/rbac/roles/:id/apis | Super | 设置角色 API 权限 |
+| GET | /api/v1/rbac/roles/:id/menus | Super | 角色菜单可见性 |
+| PUT | /api/v1/rbac/roles/:id/menus | Super | 设置角色菜单 |
+| GET | /api/v1/rbac/users/:id/roles | Super | 用户角色列表 |
+| POST | /api/v1/rbac/users/:id/roles | Super | 设置用户角色 |
+| GET | /api/v1/rbac/menus | Super | 菜单树 |
+| POST | /api/v1/rbac/menus | Super | 创建菜单 |
+| PUT | /api/v1/rbac/menus/:id | Super | 更新菜单 |
+| DELETE | /api/v1/rbac/menus/:id | Super | 删除菜单 |
+| GET | /api/v1/rbac/apis | Super | API 端点注册列表 |
+| GET | /api/v1/rbac/templates | Super | 权限模板列表 |
+| POST | /api/v1/rbac/templates | Super | 创建模板 |
+| GET | /api/v1/rbac/templates/:id | Super | 模板详情 |
+| PUT | /api/v1/rbac/templates/:id | Super | 更新模板 |
+| DELETE | /api/v1/rbac/templates/:id | Super | 删除模板 |
+| POST | /api/v1/rbac/roles/:id/apply-template | Super | 应用模板到角色 |
+| GET | /api/v1/rbac/me/menus | JWT | 当前用户可见菜单树 |
 
 #### 站点级管理 API（需要站点上下文）
 
@@ -108,13 +137,13 @@ Request
 | POST | /api/v1/api-keys | Admin+ | 创建 API Key |
 | DELETE | /api/v1/api-keys/:id | Admin+ | 吊销 API Key |
 | GET | /api/v1/settings | Admin+ | 系统配置列表 |
-| PUT | /api/v1/settings/:key | SuperAdmin | 更新配置项 |
-| GET | /api/v1/audit-logs | SuperAdmin | 审计日志 |
-| GET | /api/v1/users | SuperAdmin | 用户列表 |
-| POST | /api/v1/users | SuperAdmin | 创建用户 |
-| GET | /api/v1/users/:id | SuperAdmin | 用户详情 |
-| PUT | /api/v1/users/:id | SuperAdmin | 更新用户 |
-| DELETE | /api/v1/users/:id | SuperAdmin | 删除用户 |
+| PUT | /api/v1/settings/:key | Super | 更新配置项 |
+| GET | /api/v1/audit-logs | Super | 审计日志 |
+| GET | /api/v1/users | Super | 用户列表 |
+| POST | /api/v1/users | Super | 创建用户 |
+| GET | /api/v1/users/:id | Super | 用户详情 |
+| PUT | /api/v1/users/:id | Super | 更新用户 |
+| DELETE | /api/v1/users/:id | Super | 删除用户 |
 | GET | /api/v1/post-types | Viewer+ | 文章类型列表 |
 | POST | /api/v1/post-types | Admin+ | 创建文章类型 |
 | PUT | /api/v1/post-types/:id | Admin+ | 更新文章类型 |
@@ -239,13 +268,17 @@ sequenceDiagram
 
 ---
 
-## 1.1 RBAC 权限矩阵
+## 1.1 RBAC 权限模型
 
-> **权限矩阵**（详见 story.md US-002）
+> **动态 RBAC**（详见 story.md US-002）
 >
-> 角色现在是**每站点独立**的，通过 `public.sfc_site_user_roles` 表分配。同一用户可以在站点 A 是 SuperAdmin，在站点 B 是 Editor。
+> 权限现在通过 **`sfc_role_apis`** 表动态控制。每个角色在 `sfc_roles` 表中定义，角色可访问的 API 端点通过 `sfc_role_apis` 关联表配置，角色可见的菜单通过 `sfc_role_menus` 关联表配置。角色是**全局**的（非 per-site），通过 `public.sfc_user_roles` 表将角色分配给用户。
 >
-> | 操作 | SuperAdmin | Admin | Editor | Viewer |
+> 系统内置 4 个角色（`built_in = true`，不可删除）：**super** / **admin** / **editor** / **viewer**。管理员可创建自定义角色并通过 RBAC 管理 API 配置其权限。
+>
+> 下表为内置角色的**默认权限**参考（实际权限由 `sfc_role_apis` 动态决定）：
+>
+> | 操作 | Super | Admin | Editor | Viewer |
 > |------|:---:|:---:|:---:|:---:|
 > | 用户管理 | ✅ | ❌ | ❌ | ❌ |
 > | 系统配置 | ✅ | ✅ | ❌ | ❌ |
@@ -254,6 +287,7 @@ sequenceDiagram
 > | 媒体上传 | ✅ | ✅ | ✅ | ❌ |
 > | API Key 管理 | ✅ | ✅ | ❌ | ❌ |
 > | 站点管理（sites CRUD） | ✅ | ❌ | ❌ | ❌ |
+> | RBAC 管理 | ✅ | ❌ | ❌ | ❌ |
 > | 评论审核（列表/审批/拒绝/标记垃圾） | ✅ | ✅ | ✅ | ❌ |
 > | 评论删除（永久） | ✅ | ✅ | ❌ | ❌ |
 > | 评论批量操作 | ✅ | ✅ | ❌ | ❌ |
@@ -265,7 +299,7 @@ sequenceDiagram
 > | 2FA 设置/禁用（自身） | ✅ | ✅ | ✅ | ✅ |
 > | 2FA 强制禁用（他人） | ✅ | ❌ | ❌ | ❌ |
 
-中间件 `RequireRole(roles ...string)` 依据此矩阵实现权限校验，详见第 16 节 Gin 中间件设计。角色在每次请求中从 `sfc_site_user_roles` 表解析（Redis 缓存 300s），**不存储在 JWT claims 中**。
+RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 缓存 5 分钟），再从 `sfc_role_apis` 获取角色可访问的 API 集合（L2 缓存 10 分钟），动态匹配当前请求的 `method:path`。`super` 角色拥有所有权限（短路放行）。角色**不存储在 JWT claims 中**。详见第 21 节 Gin 中间件设计。
 
 ---
 
@@ -429,7 +463,7 @@ sequenceDiagram
 
 > **临时令牌说明**：`temp_token` 是一个短期 JWT（5 分钟），claims 包含 `{ "sub": "user_id", "purpose": "2fa_verification", "jti": "...", "exp": ... }`。该令牌仅可用于 `POST /api/v1/auth/2fa/validate` 端点，其他端点会拒绝此令牌。不包含 `role` 声明，无法用于授权。
 
-> **JWT Claims（Access Token）**：`{ "sub": "user_id", "jti": "token_id", "iat": ..., "exp": ... }`。注意：`role` 字段已从 JWT claims 中移除（角色现在是每站点独立的，在每次请求中从 `sfc_site_user_roles` 解析并缓存于 Redis 300s）。
+> **JWT Claims（Access Token）**：`{ "sub": "user_id", "jti": "token_id", "iat": ..., "exp": ... }`。注意：`role` 字段不在 JWT claims 中。角色是全局的，在每次请求中由 RBAC 中间件从 `sfc_user_roles` + `sfc_role_apis` 解析（两级 Redis 缓存：L1 用户角色 5min，L2 角色 API 集合 10min）。
 
 ---
 
@@ -473,27 +507,26 @@ sequenceDiagram
     "avatar_url": null,
     "last_login_at": "2026-02-21T10:00:00Z",
     "two_factor_enabled": true,
+    "roles": ["super"],
     "sites": [
       {
         "id": "019...",
         "name": "My Blog",
         "slug": "blog",
-        "domain": "blog.example.com",
-        "role": "superadmin"
+        "domain": "blog.example.com"
       },
       {
         "id": "019...",
         "name": "Documentation",
         "slug": "docs",
-        "domain": "docs.example.com",
-        "role": "editor"
+        "domain": "docs.example.com"
       }
     ]
   }
 }
 ```
 
-> `sites` 数组包含用户拥有角色的所有站点及其对应角色。`role` 字段来自 `public.sfc_site_user_roles`，不再存储在用户记录本身。
+> `roles` 数组来自 `public.sfc_user_roles`，包含用户的全局角色 slug 列表。`sites` 数组包含用户可访问的所有站点（角色是全局的，不再 per-site 分配）。
 
 ---
 
@@ -659,16 +692,16 @@ sequenceDiagram
 | 422 | VALIDATION_ERROR | 输入校验失败 |
 | 500 | SETUP_FAILED | 安装过程内部错误（事务已回滚） |
 
-> **执行流程**（单一事务内）：验证未安装 → 获取 PostgreSQL advisory lock → 创建 public schema 表 → 创建 sites 记录 → 创建站点 schema（`site_{slug}`）→ 执行所有站点级 DDL → 创建管理员用户 → 创建 `sfc_site_user_roles`（superadmin）→ 设置 `system.installed = true` → COMMIT → 更新 Redis 和内存标志 → 生成 JWT。
+> **执行流程**（单一事务内）：验证未安装 → 获取 PostgreSQL advisory lock → 创建 public schema 表 → 创建 sites 记录 → 创建站点 schema（`site_{slug}`）→ 执行所有站点级 DDL → 创建管理员用户 → 创建 `sfc_user_roles`（super）→ 设置 `system.installed = true` → COMMIT → 更新 Redis 和内存标志 → 生成 JWT。
 
 ---
 
-## 4.2 站点管理 API（SuperAdmin，全局端点）
+## 4.2 站点管理 API（Super，全局端点）
 
 > 站点管理是全局操作，不需要站点上下文。所有操作直接查询 `public.sfc_sites` 表。
 
 ### GET /api/v1/sites
-**描述**：获取所有站点列表（仅 SuperAdmin）
+**描述**：获取所有站点列表（仅 Super）
 
 **Query Params**：`page`，`per_page`，`q`（名称/slug 搜索），`is_active`
 
@@ -699,7 +732,7 @@ sequenceDiagram
 ---
 
 ### POST /api/v1/sites
-**描述**：创建新站点（创建 PostgreSQL schema）（仅 SuperAdmin）
+**描述**：创建新站点（创建 PostgreSQL schema）（仅 Super）
 
 **Request Body**
 ```json
@@ -746,12 +779,12 @@ sequenceDiagram
 | 409 | DOMAIN_EXISTS | 域名已被占用 |
 | 500 | SCHEMA_ERROR | Schema 创建失败 |
 
-> **执行流程**（单一事务内）：校验 slug/domain 唯一 → INSERT sites → CREATE SCHEMA site_{slug} → 执行站点级 DDL → Seed built-in sfc_site_post_types → 插入默认 sfc_site_configs → 为当前用户创建 superadmin 角色 → COMMIT → 刷新 Redis 缓存。
+> **执行流程**（单一事务内）：校验 slug/domain 唯一 → INSERT sites → CREATE SCHEMA site_{slug} → 执行站点级 DDL → Seed built-in sfc_site_post_types → 插入默认 sfc_site_configs → COMMIT → 刷新 Redis 缓存。
 
 ---
 
 ### GET /api/v1/sites/:slug
-**描述**：获取站点详情（仅 SuperAdmin）
+**描述**：获取站点详情（仅 Super）
 
 **Response 200**
 ```json
@@ -777,7 +810,7 @@ sequenceDiagram
 ---
 
 ### PUT /api/v1/sites/:slug
-**描述**：更新站点信息（仅 SuperAdmin）。`slug` 创建后不可修改。
+**描述**：更新站点信息（仅 Super）。`slug` 创建后不可修改。
 
 **Request Body**（所有字段可选）
 ```json
@@ -812,7 +845,7 @@ sequenceDiagram
 ---
 
 ### DELETE /api/v1/sites/:slug
-**描述**：删除站点（DROP SCHEMA CASCADE）（仅 SuperAdmin）
+**描述**：删除站点（DROP SCHEMA CASCADE）（仅 Super）
 
 **Request Body**（需要确认）
 ```json
@@ -844,7 +877,7 @@ sequenceDiagram
 ---
 
 ### GET /api/v1/sites/:slug/users
-**描述**：获取站点的用户及角色列表（仅 SuperAdmin）
+**描述**：获取站点的用户及角色列表（仅 Super）
 
 **Query Params**：`page`，`per_page`，`role`，`q`（姓名/邮箱搜索）
 
@@ -872,7 +905,7 @@ sequenceDiagram
 ---
 
 ### PUT /api/v1/sites/:slug/users/:user_id/role
-**描述**：分配或更新用户在站点上的角色（仅 SuperAdmin）
+**描述**：分配或更新用户在站点上的角色（仅 Super）
 
 **Request Body**
 ```json
@@ -881,7 +914,7 @@ sequenceDiagram
 }
 ```
 
-**字段校验**：`role` 必须是 `superadmin`、`admin`、`editor`、`viewer` 之一。
+**字段校验**：`role` 必须是 `sfc_roles` 表中已存在的角色 slug（内置角色：`super`、`admin`、`editor`、`viewer`，也支持自定义角色）。
 
 **Response 200**
 ```json
@@ -896,12 +929,12 @@ sequenceDiagram
 }
 ```
 
-> 变更后自动刷新 Redis 角色缓存：`DEL site:{slug}:role:{user_id}`。
+> 变更后自动刷新 Redis RBAC 缓存：`DEL rbac:user:{user_id}:roles`。
 
 ---
 
 ### DELETE /api/v1/sites/:slug/users/:user_id/role
-**描述**：从站点移除用户角色（仅 SuperAdmin）
+**描述**：从站点移除用户角色（仅 Super）
 
 **Response 200**
 ```json
@@ -1136,8 +1169,8 @@ sequenceDiagram
 ---
 
 ### DELETE /api/v1/auth/2fa/users/:user_id
-**描述**：SuperAdmin 强制禁用指定用户的 2FA（账户恢复场景）
-**认证**：JWT（仅 SuperAdmin）
+**描述**：Super 强制禁用指定用户的 2FA（账户恢复场景）
+**认证**：JWT（仅 Super）
 
 **Request Body**
 ```json
@@ -1158,17 +1191,17 @@ sequenceDiagram
 
 | HTTP Status | Error Code | 说明 |
 |-------------|------------|------|
-| 403 | FORBIDDEN | 非 SuperAdmin |
+| 403 | FORBIDDEN | 非 Super |
 | 404 | NOT_FOUND | 用户不存在或未启用 2FA |
 
 > 副作用：删除 `public.sfc_user_totp` 记录、吊销所有刷新令牌、写入包含 reason 的审计日志。
 
 ---
 
-## 5. 用户管理 API（SuperAdmin）
+## 5. 用户管理 API（Super）
 
 ### GET /api/v1/users
-**描述**：获取用户列表（仅 SuperAdmin）
+**描述**：获取用户列表（仅 Super）
 
 **Query Params**：`page`, `per_page`, `role`, `q`（姓名/邮箱搜索）
 
@@ -1196,7 +1229,7 @@ sequenceDiagram
 ---
 
 ### POST /api/v1/users
-**描述**：创建用户（仅 SuperAdmin）
+**描述**：创建用户（仅 Super）
 
 **Request Body**
 ```json
@@ -2152,7 +2185,7 @@ alt_text: 图片描述（可选）
 }
 ```
 
-> `?force=true` 需要 Admin 或 SuperAdmin 角色，即使媒体有引用也执行删除操作。
+> `?force=true` 需要 Admin 或 Super 角色，即使媒体有引用也执行删除操作。
 
 ---
 
@@ -2252,7 +2285,7 @@ alt_text: 图片描述（可选）
 ---
 
 ### PUT /api/v1/settings/:key
-**描述**：更新指定配置项（仅 SuperAdmin）
+**描述**：更新指定配置项（仅 Super）
 
 **Request Body**
 ```json
@@ -2275,10 +2308,10 @@ alt_text: 图片描述（可选）
 
 ---
 
-## 12. 审计日志 API（SuperAdmin）
+## 12. 审计日志 API（Super）
 
 ### GET /api/v1/audit-logs
-**描述**：查询审计日志（仅 SuperAdmin）
+**描述**：查询审计日志（仅 Super）
 
 **Query Params**
 
@@ -2449,7 +2482,7 @@ alt_text: 图片描述（可选）
 ---
 
 ### GET /api/public/v1/search?q=关键字
-**描述**：全文检索（使用 PostgreSQL FTS）
+**描述**：全文检索（使用 Meilisearch）
 
 **Response 200**
 ```json
@@ -3902,21 +3935,19 @@ func SetupRouter(r *gin.Engine) {
             auth.POST("/2fa/backup-codes", handler.RegenerateBackupCodes)
         }
 
-        // 用户管理（仅 SuperAdmin，全局）
+        // 用户管理（全局，RBAC 中间件动态鉴权）
         users := api.Group("/users")
-        users.Use(RequireRole("superadmin"))
         {
             users.GET("",         handler.ListUsers)
             users.POST("",        handler.CreateUser)
             users.GET("/:id",     handler.GetUser)
             users.PUT("/:id",     handler.UpdateUser)
             users.DELETE("/:id",  handler.DeleteUser)
-            users.DELETE("/:id/2fa", handler.ForceDisable2FA) // SuperAdmin 强制禁用 2FA
+            users.DELETE("/:id/2fa", handler.ForceDisable2FA)
         }
 
-        // 站点管理（仅 SuperAdmin，全局）
+        // 站点管理（全局，RBAC 中间件动态鉴权）
         sites := api.Group("/sites")
-        sites.Use(RequireRole("superadmin"))
         {
             sites.GET("",                                handler.ListSites)
             sites.POST("",                               handler.CreateSite)
@@ -3928,12 +3959,44 @@ func SetupRouter(r *gin.Engine) {
             sites.DELETE("/:slug/users/:user_id/role",   handler.RemoveSiteRole)
         }
 
+        // RBAC 管理（全局，RBAC 中间件动态鉴权）
+        rbac := api.Group("/rbac")
+        {
+            rbac.GET("/roles",                     rbacHandler.ListRoles)
+            rbac.POST("/roles",                    rbacHandler.CreateRole)
+            rbac.GET("/roles/:id",                 rbacHandler.GetRole)
+            rbac.PUT("/roles/:id",                 rbacHandler.UpdateRole)
+            rbac.DELETE("/roles/:id",              rbacHandler.DeleteRole)
+            rbac.GET("/roles/:id/apis",            rbacHandler.GetRoleAPIs)
+            rbac.PUT("/roles/:id/apis",            rbacHandler.SetRoleAPIs)
+            rbac.GET("/roles/:id/menus",           rbacHandler.GetRoleMenus)
+            rbac.PUT("/roles/:id/menus",           rbacHandler.SetRoleMenus)
+            rbac.POST("/roles/:id/apply-template", rbacHandler.ApplyTemplate)
+            rbac.GET("/users/:id/roles",           rbacHandler.GetUserRoles)
+            rbac.POST("/users/:id/roles",          rbacHandler.SetUserRoles)
+            rbac.GET("/menus",                     rbacHandler.ListMenus)
+            rbac.POST("/menus",                    rbacHandler.CreateMenu)
+            rbac.PUT("/menus/:id",                 rbacHandler.UpdateMenu)
+            rbac.DELETE("/menus/:id",              rbacHandler.DeleteMenu)
+            rbac.GET("/apis",                      rbacHandler.ListAPIs)
+            rbac.GET("/templates",                 rbacHandler.ListTemplates)
+            rbac.POST("/templates",                rbacHandler.CreateTemplate)
+            rbac.GET("/templates/:id",             rbacHandler.GetTemplate)
+            rbac.PUT("/templates/:id",             rbacHandler.UpdateTemplate)
+            rbac.DELETE("/templates/:id",          rbacHandler.DeleteTemplate)
+            rbac.GET("/me/menus",                  rbacHandler.GetMyMenus)
+        }
+
         // ---- 站点级端点（需要站点上下文） ----
         // 以下路由组增加 SiteResolver + SchemaMiddleware
         siteScoped := api.Group("")
         siteScoped.Use(SiteResolverMiddleware(), SchemaMiddleware())
         {
-            // 文章（读取：所有认证用户；写入：Editor+）
+            // 以下所有站点级路由均由 RBAC 中间件动态鉴权
+            // 每个 API 端点在 sfc_apis 表中注册，角色权限通过 sfc_role_apis 配置
+            // 无需硬编码 RequireRole()，RBAC 中间件自动匹配 method:path
+
+            // 文章
             posts := siteScoped.Group("/posts")
             {
                 posts.GET("",           handler.ListPosts)
@@ -3941,134 +4004,92 @@ func SetupRouter(r *gin.Engine) {
                 posts.GET("/:id/revisions",  handler.ListRevisions)
                 posts.GET("/:id/translations",         handler.ListTranslations)
                 posts.GET("/:id/translations/:locale", handler.GetTranslation)
-
-                postsWrite := posts.Group("")
-                postsWrite.Use(RequireRole("editor", "admin", "superadmin"))
-                {
-                    postsWrite.POST("",          handler.CreatePost)
-                    postsWrite.PUT("/:id",       handler.UpdatePost)
-                    postsWrite.DELETE("/:id",    handler.DeletePost)
-                    postsWrite.POST("/:id/publish",   handler.PublishPost)
-                    postsWrite.POST("/:id/unpublish", handler.UnpublishPost)
-                    postsWrite.POST("/:id/revert-to-draft", handler.RevertToDraft)
-                    postsWrite.POST("/:id/restore",   handler.RestorePost)
-                    postsWrite.POST("/:id/revisions/:rev_id/rollback", handler.RollbackRevision)
-
-                    // 多语言翻译
-                    postsWrite.PUT("/:id/translations/:locale", handler.UpsertTranslation)
-                    postsWrite.DELETE("/:id/translations/:locale", handler.DeleteTranslation)
-
-                    // 草稿预览
-                    postsWrite.POST("/:id/preview",             handler.CreatePreviewToken)
-                    postsWrite.GET("/:id/preview",              handler.ListPreviewTokens)
-                    postsWrite.DELETE("/:id/preview",           handler.RevokeAllPreviewTokens)
-                    postsWrite.DELETE("/:id/preview/:token_id", handler.RevokeSinglePreviewToken)
-                }
+                posts.POST("",          handler.CreatePost)
+                posts.PUT("/:id",       handler.UpdatePost)
+                posts.DELETE("/:id",    handler.DeletePost)
+                posts.POST("/:id/publish",   handler.PublishPost)
+                posts.POST("/:id/unpublish", handler.UnpublishPost)
+                posts.POST("/:id/revert-to-draft", handler.RevertToDraft)
+                posts.POST("/:id/restore",   handler.RestorePost)
+                posts.POST("/:id/revisions/:rev_id/rollback", handler.RollbackRevision)
+                posts.PUT("/:id/translations/:locale", handler.UpsertTranslation)
+                posts.DELETE("/:id/translations/:locale", handler.DeleteTranslation)
+                posts.POST("/:id/preview",             handler.CreatePreviewToken)
+                posts.GET("/:id/preview",              handler.ListPreviewTokens)
+                posts.DELETE("/:id/preview",           handler.RevokeAllPreviewTokens)
+                posts.DELETE("/:id/preview/:token_id", handler.RevokeSinglePreviewToken)
             }
 
-            // 分类（读取：所有认证用户；写入：Admin+）
+            // 分类
             categories := siteScoped.Group("/categories")
             {
                 categories.GET("",         handler.ListCategories)
                 categories.GET("/:id",     handler.GetCategory)
-
-                categoriesWrite := categories.Group("")
-                categoriesWrite.Use(RequireRole("admin", "superadmin"))
-                {
-                    categoriesWrite.POST("",        handler.CreateCategory)
-                    categoriesWrite.PUT("/:id",     handler.UpdateCategory)
-                    categoriesWrite.DELETE("/:id",  handler.DeleteCategory)
-                    categoriesWrite.PUT("/reorder", handler.ReorderCategories)
-                }
+                categories.POST("",        handler.CreateCategory)
+                categories.PUT("/:id",     handler.UpdateCategory)
+                categories.DELETE("/:id",  handler.DeleteCategory)
+                categories.PUT("/reorder", handler.ReorderCategories)
             }
 
-            // 标签（读取：所有认证用户；写入：Editor+）
+            // 标签
             tags := siteScoped.Group("/tags")
             {
                 tags.GET("",           handler.ListTags)
                 tags.GET("/suggest",   handler.SuggestTags)
-
-                tagsWrite := tags.Group("")
-                tagsWrite.Use(RequireRole("editor", "admin", "superadmin"))
-                {
-                    tagsWrite.POST("",       handler.CreateTag)
-                    tagsWrite.PUT("/:id",    handler.UpdateTag)
-                    tagsWrite.DELETE("/:id", handler.DeleteTag)
-                }
+                tags.POST("",       handler.CreateTag)
+                tags.PUT("/:id",    handler.UpdateTag)
+                tags.DELETE("/:id", handler.DeleteTag)
             }
 
-            // 媒体（读取：所有认证用户；写入：Editor+）
+            // 媒体
             media := siteScoped.Group("/media")
             {
                 media.GET("",      handler.ListMedia)
-
-                mediaWrite := media.Group("")
-                mediaWrite.Use(RequireRole("editor", "admin", "superadmin"))
-                {
-                    mediaWrite.POST("",       handler.UploadMedia)
-                    mediaWrite.DELETE("/:id", handler.DeleteMedia)
-                }
+                media.POST("",       handler.UploadMedia)
+                media.DELETE("/:id", handler.DeleteMedia)
             }
 
-            // API Key 管理（Admin+）
+            // API Key 管理
             apiKeys := siteScoped.Group("/api-keys")
-            apiKeys.Use(RequireRole("admin", "superadmin"))
             {
                 apiKeys.GET("",         handler.ListAPIKeys)
                 apiKeys.POST("",        handler.CreateAPIKey)
                 apiKeys.DELETE("/:id",  handler.RevokeAPIKey)
             }
 
-            // 系统设置（Admin+ 可读）
+            // 系统设置
             settings := siteScoped.Group("/settings")
-            settings.Use(RequireRole("admin", "superadmin"))
             {
                 settings.GET("",      handler.ListSettings)
-
-                settingsWrite := settings.Group("")
-                settingsWrite.Use(RequireRole("superadmin"))
-                {
-                    settingsWrite.PUT("/:key", handler.UpdateSetting)
-                }
+                settings.PUT("/:key", handler.UpdateSetting)
             }
 
-            // 审计日志（SuperAdmin）
-            siteScoped.GET("/audit-logs", RequireRole("superadmin"), handler.ListAuditLogs)
+            // 审计日志
+            siteScoped.GET("/audit-logs", handler.ListAuditLogs)
 
-            // 文章类型与自定义字段（P2）
+            // 文章类型与自定义字段
             postTypes := siteScoped.Group("/post-types")
             {
-                postTypes.GET("",  handler.ListPostTypes)
-
-                postTypesWrite := postTypes.Group("")
-                postTypesWrite.Use(RequireRole("admin", "superadmin"))
-                {
-                    postTypesWrite.POST("",        handler.CreatePostType)
-                    postTypesWrite.PUT("/:id",     handler.UpdatePostType)
-                    postTypesWrite.DELETE("/:id",  handler.DeletePostType)
-                }
+                postTypes.GET("",        handler.ListPostTypes)
+                postTypes.POST("",       handler.CreatePostType)
+                postTypes.PUT("/:id",    handler.UpdatePostType)
+                postTypes.DELETE("/:id", handler.DeletePostType)
             }
 
-            // 评论管理（读取：Editor+；写入/删除：Editor+/Admin+）
+            // 评论管理
             comments := siteScoped.Group("/comments")
             {
                 comments.GET("",                handler.ListComments)
                 comments.GET("/:id",            handler.GetComment)
-
-                commentsWrite := comments.Group("")
-                commentsWrite.Use(RequireRole("editor", "admin", "superadmin"))
-                {
-                    commentsWrite.PUT("/:id/status",    handler.UpdateCommentStatus)
-                    commentsWrite.PUT("/:id/pin",       handler.ToggleCommentPin)
-                    commentsWrite.POST("/:id/reply",    handler.AdminReplyComment)
-                    commentsWrite.PUT("/batch-status",   handler.BatchUpdateCommentStatus)
-                    commentsWrite.DELETE("/:id",        handler.DeleteComment)
-                }
+                comments.PUT("/:id/status",     handler.UpdateCommentStatus)
+                comments.PUT("/:id/pin",        handler.ToggleCommentPin)
+                comments.POST("/:id/reply",     handler.AdminReplyComment)
+                comments.PUT("/batch-status",    handler.BatchUpdateCommentStatus)
+                comments.DELETE("/:id",         handler.DeleteComment)
             }
 
-            // 导航菜单（Admin+）
+            // 导航菜单
             menus := siteScoped.Group("/menus")
-            menus.Use(RequireRole("admin", "superadmin"))
             {
                 menus.GET("",                       handler.ListMenus)
                 menus.POST("",                      handler.CreateMenu)
@@ -4081,9 +4102,8 @@ func SetupRouter(r *gin.Engine) {
                 menus.PUT("/:id/items/reorder",     handler.ReorderMenuItems)
             }
 
-            // URL 重定向（Admin+）
+            // URL 重定向
             redirects := siteScoped.Group("/redirects")
-            redirects.Use(RequireRole("admin", "superadmin"))
             {
                 redirects.GET("",              handler.ListRedirects)
                 redirects.POST("",             handler.CreateRedirect)
@@ -4162,16 +4182,17 @@ func JWTMiddleware() gin.HandlerFunc {
             return
         }
         c.Set("user_id", claims.UserID)
-        // 注意：role 不再从 JWT claims 获取
-        // 角色在 RequireRole 中间件内从 sfc_site_user_roles 解析（Redis 缓存 300s）
+        // 注意：role 不在 JWT claims 中，由 RBAC 中间件解析
         c.Next()
     }
 }
 
-// 角色权限中间件
-// 从 sfc_site_user_roles 查询用户在当前站点的角色（Redis 缓存 300s）
-// Redis key: site:{slug}:role:{user_id}
-func RequireRole(roles ...string) gin.HandlerFunc { ... }
+// RBAC 中间件（动态权限校验）
+// 1. 从 sfc_user_roles 获取用户全局角色（L1 Redis 缓存 5min，key: rbac:user:{user_id}:roles）
+// 2. super 角色短路放行
+// 3. 从 sfc_role_apis 获取角色可访问的 API 集合（L2 Redis 缓存 10min，key: rbac:role:{role_id}:apis）
+// 4. 匹配当前请求 method:path，命中则放行，否则 403
+func RBACMiddleware(svc *rbac.Service) gin.HandlerFunc { ... }
 
 // API Key 中间件（站点级，key 存储在站点 Schema 内）
 func APIKeyMiddleware() gin.HandlerFunc { ... }

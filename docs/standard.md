@@ -275,7 +275,7 @@ func (h *PostHandler) Create(c *gin.Context) {
     siteSlug := c.GetString("site_slug")   // SchemaMiddleware 注入
     siteID := c.GetString("site_id")       // SiteResolverMiddleware 注入
     userID := c.GetString("user_id")       // AuthMiddleware 注入
-    role := c.GetString("role")            // AuthMiddleware 注入（per-site 角色）
+    role := c.GetString("role")            // RBAC 中间件注入（全局角色）
 
     // search_path 已由 SchemaMiddleware 设置为 'site_{slug}', 'public'
     // 所有后续查询自动作用于正确的站点模式
@@ -477,7 +477,7 @@ func SchemaMiddleware(siteRepo repository.SiteRepository, db *bun.DB) gin.Handle
 
 #### 角色解析
 
-JWT 不携带 `role` 声明，角色从 `public.sfc_site_user_roles` 按请求解析，Redis 缓存 300 秒：
+JWT 不携带 `role` 声明，角色从 `public.sfc_user_roles` 按请求解析，RBAC 中间件通过 `sfc_role_apis` 动态匹配 API 权限（两级 Redis 缓存）：
 
 ```go
 // internal/middleware/auth.go（角色解析部分）
@@ -494,9 +494,8 @@ func resolveRole(ctx context.Context, rdb *redis.Client, db *bun.DB,
     // 2. 缓存未命中，查询数据库
     var role string
     err = db.NewSelect().
-        TableExpr("public.sfc_site_user_roles").
-        Column("role").
-        Where("site_id = ?", siteID).
+        TableExpr("public.sfc_user_roles").
+        Column("role_id").
         Where("user_id = ?", userID).
         Scan(ctx, &role)
     if err != nil {
@@ -587,18 +586,18 @@ func SetupRouter(r *gin.Engine, deps *Dependencies) {
 
         // Comments moderation
         comments := api.Group("/comments")
-        comments.Use(middleware.RequireRole("editor", "admin", "superadmin"))
-        { /* ... */ }
+        // RBAC 中间件根据 sfc_role_apis 动态匹配，无需硬编码角色
+        // comments, menus, redirects 等路由的权限由 sfc_role_apis 表配置
+        comments := api.Group("/comments")
+        { /* RBAC 中间件自动匹配 */ }
 
         // Menus
         menus := api.Group("/menus")
-        menus.Use(middleware.RequireRole("admin", "superadmin"))
-        { /* ... */ }
+        { /* RBAC 中间件自动匹配 */ }
 
         // Redirects
         redirects := api.Group("/redirects")
-        redirects.Use(middleware.RequireRole("admin", "superadmin"))
-        { /* ... */ }
+        { /* RBAC 中间件自动匹配 */ }
 
         // Preview tokens
         // (nested under posts routes, Editor+)

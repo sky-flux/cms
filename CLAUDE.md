@@ -39,7 +39,7 @@ Bun 1.2+    | Docker Compose 2+  | Redis 8 / Meilisearch / RustFS
 
 ## 多站点架构
 
-- `public` schema: sfc_users, sfc_sites, sfc_site_user_roles, sfc_refresh_tokens, sfc_user_totp, sfc_configs（`sfc_` 前缀标识 Sky Flux CMS 专属表）
+- `public` schema: sfc_users, sfc_sites, sfc_roles, sfc_user_roles, sfc_apis, sfc_role_apis, sfc_menus（后台管理菜单）, sfc_role_menus, sfc_role_templates, sfc_role_template_apis, sfc_role_template_menus, sfc_refresh_tokens, sfc_user_totp, sfc_configs（`sfc_` 前缀标识 Sky Flux CMS 专属表）
 - `site_{slug}` schema: sfc_site_posts, sfc_site_categories, sfc_site_tags, sfc_site_media_files, sfc_site_comments, sfc_site_menus, sfc_site_redirects, sfc_site_preview_tokens, sfc_site_api_keys, sfc_site_audits, sfc_site_configs
 - 中间件链: InstallationGuard → SiteResolver → SchemaMiddleware (`SET search_path TO 'site_{slug}', 'public'`) → Auth → RBAC
 - 内容表无 `site_id` 列 — Schema 本身即隔离边界
@@ -102,6 +102,7 @@ sky-flux-cms/                          # Go 单体多模块分层架构
 │   ├── comment/ menu/ redirect/       # 评论 / 菜单 / 重定向
 │   ├── preview/ site/ setup/          # 预览 / 站点 / 安装向导
 │   ├── feed/ apikey/ audit/ system/   # 订阅 / API Key / 审计 / 系统
+│   ├── rbac/                          # 动态 RBAC（handler/service/api_registry/repo/dto）
 │   ├── model/                         # 共享数据模型
 │   ├── middleware/                    # 共享 Gin 中间件
 │   ├── config/                        # Viper 配置加载

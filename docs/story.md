@@ -39,7 +39,7 @@ Then  系统自动使用 Refresh Token 续签，用户无感知
 ### US-002 角色权限控制
 
 **As a** 超级管理员
-**I want to** 为不同用户分配角色（SuperAdmin / Admin / Editor / Viewer）
+**I want to** 为不同用户分配角色（Super / Admin / Editor / Viewer，内置角色，可通过 RBAC 管理扩展自定义角色）
 **So that** 不同人员只能访问和操作其职责范围内的功能
 
 **验收标准**
@@ -58,7 +58,7 @@ Given Viewer 角色用户
 When  尝试创建或编辑文章
 Then  API 返回 403 Forbidden，前端展示无权限提示
 
-Scenario: Admin 访问 SuperAdmin 专属功能
+Scenario: Admin 访问 Super 专属功能
 Given Admin 已登录
 When  尝试访问用户管理或系统全局设置
 Then  返回 403 Forbidden 并显示"权限不足"提示
@@ -71,7 +71,7 @@ Then  仅可见 status=published 的文章，不可见 draft/scheduled/archived 
 
 **权限矩阵**
 
-| 操作 | SuperAdmin | Admin | Editor | Viewer |
+| 操作 | Super | Admin | Editor | Viewer |
 |------|:---:|:---:|:---:|:---:|
 | 用户管理 | ✅ | ❌ | ❌ | ❌ |
 | 系统配置 | ✅ | ✅ | ❌ | ❌ |
@@ -422,7 +422,7 @@ Then  返回 429 Too Many Requests，附带 Retry-After Header
 
 ### US-016 站点基础配置
 
-**As a** SuperAdmin
+**As a** 超级管理员
 **I want to** 配置站点的基础信息
 **So that** 系统能以正确的名称、Logo 和域名运行
 
@@ -438,7 +438,7 @@ And   管理后台顶部 Logo 区域实时更新站点名称
 
 ### US-017 操作日志审计
 
-**As a** SuperAdmin
+**As a** 超级管理员
 **I want to** 查看所有用户的操作记录
 **So that** 追溯问题和异常行为
 
@@ -448,7 +448,7 @@ And   管理后台顶部 Logo 区域实时更新站点名称
 When  任何用户执行创建、更新、删除操作
 Then  系统记录：操作人、操作类型、目标资源、IP 地址、时间戳
 
-When  SuperAdmin 查看审计日志
+When  超级管理员查看审计日志
 Then  可按用户、操作类型、时间范围筛选
 And   日志只读，不可删除（90 天后自动归档）
 ```
@@ -481,31 +481,31 @@ Then  返回英文版本内容
 
 **优先级**：P1
 
-**As a** SuperAdmin
+**As a** 超级管理员
 **I want to** 创建和管理多个独立站点
 **So that** 一个 CMS 实例可以服务多个网站，每个站点拥有独立的内容空间
 
 **验收标准**
 
-1. SuperAdmin 可通过 `POST /api/v1/admin/sites` 创建新站点，需提供名称、slug（`^[a-z0-9_]{3,50}$`）、可选域名
+1. 超级管理员可通过 `POST /api/v1/sites` 创建新站点，需提供名称、slug（`^[a-z0-9_]{3,50}$`）、可选域名
 2. 创建站点时系统在单个事务中完成：插入 `public.sfc_sites` 记录、创建 `site_{slug}` schema、执行全部 per-site DDL、种子 built-in sfc_site_post_types、插入默认 sfc_site_configs
-3. SuperAdmin 可通过 `PATCH /api/v1/admin/sites/{site_id}` 编辑站点（名称、域名、描述、Logo、时区、启停状态）。slug 创建后不可修改
-4. SuperAdmin 可通过 `DELETE /api/v1/admin/sites/{site_id}` 删除站点，需提交 `confirm_slug` 确认且不能删除最后一个站点。删除执行 `DROP SCHEMA site_{slug} CASCADE`
+3. 超级管理员可通过 `PUT /api/v1/sites/:slug` 编辑站点（名称、域名、描述、Logo、时区、启停状态）。slug 创建后不可修改
+4. 超级管理员可通过 `DELETE /api/v1/sites/:slug` 删除站点，需提交 `confirm_slug` 确认且不能删除最后一个站点。删除执行 `DROP SCHEMA site_{slug} CASCADE`
 5. 每个站点拥有独立的文章、分类、标签、媒体库、评论、菜单、重定向、预览令牌、API Key、审计日志
-6. 用户角色为 per-site 分配：通过 `public.sfc_site_user_roles` 表，同一用户可在站点 A 为 Admin、站点 B 为 Editor
+6. 用户角色为全局分配：通过 `public.sfc_user_roles` 表和动态 RBAC 系统（`sfc_roles` + `sfc_role_apis`），权限在 API 级别动态匹配
 7. 支持域名映射：`public.sfc_sites.domain` 字段，SiteResolverMiddleware 通过 Host header 解析当前站点
 8. 管理后台顶部提供站点切换 UI，通过 `X-Site-Slug` header 指定当前操作站点
-9. JWT claims 中包含 `site` 字段，AuthMiddleware 根据 `sfc_site_user_roles` 解析当前站点角色（Redis 缓存 300s）
+9. JWT claims 仅包含 sub/jti/exp/iat/iss（不含 role/site），RBAC 中间件根据 `sfc_user_roles` + `sfc_role_apis` 按请求实时匹配 API 权限（两级 Redis 缓存）
 10. 保留 slug 名称不可使用：`public`、`pg_catalog`、`information_schema`、`pg_toast`、`pg_temp`、`site`、`admin`、`api`、`setup`、`system`、`default`、`template`、`test`
 
 **相关 API 端点**
-- `POST /api/v1/admin/sites` — 创建站点
-- `GET /api/v1/admin/sites` — 列出所有站点
-- `GET /api/v1/admin/sites/{site_id}` — 获取站点详情
-- `PATCH /api/v1/admin/sites/{site_id}` — 更新站点
-- `DELETE /api/v1/admin/sites/{site_id}` — 删除站点
-- `POST /api/v1/admin/sites/{site_id}/roles` — 为用户分配站点角色
-- `DELETE /api/v1/admin/sites/{site_id}/roles/{user_id}` — 移除用户站点角色
+- `POST /api/v1/sites` — 创建站点
+- `GET /api/v1/sites` — 列出所有站点
+- `GET /api/v1/sites/:slug` — 获取站点详情
+- `PUT /api/v1/sites/:slug` — 更新站点
+- `DELETE /api/v1/sites/:slug` — 删除站点
+- `POST /api/v1/sites/:slug/roles` — 为用户分配站点角色
+- `DELETE /api/v1/sites/:slug/roles/:user_id` — 移除用户站点角色
 
 ---
 
@@ -521,7 +521,7 @@ Then  返回英文版本内容
 
 1. 首次访问未安装的 CMS 实例时，所有页面（`/setup` 和 `/api/v1/setup/*` 除外）返回 503 或重定向至 `/setup`
 2. 安装向导页面提供单步表单：站点名称、站点 slug、站点 URL、管理员邮箱、管理员密码（含强度指示器）、管理员显示名称、语言（默认 zh-CN）
-3. 提交后调用 `POST /api/v1/setup/initialize`，在单个数据库事务中原子执行：创建 public schema 表（含 enum 类型）、创建首个站点（`public.sfc_sites` + `site_{slug}` schema）、创建管理员用户、分配 superadmin 角色、设置 `system.installed = true`
+3. 提交后调用 `POST /api/v1/setup/initialize`，在单个数据库事务中原子执行：创建 public schema 表（含 enum 类型）、创建首个站点（`public.sfc_sites` + `site_{slug}` schema）、创建管理员用户、分配 super 角色、设置 `system.installed = true`
 4. 事务中任一步骤失败则全部回滚，返回 `SETUP_FAILED` 错误
 5. 使用 PostgreSQL advisory lock（`pg_advisory_xact_lock`）防止并发安装竞态
 6. 安装完成后，`POST /api/v1/setup/initialize` 永久返回 409 `ALREADY_INSTALLED`
@@ -700,7 +700,7 @@ Then  返回英文版本内容
 - `POST /api/v1/redirects` — 创建重定向（Admin+）
 - `PUT /api/v1/redirects/:id` — 更新重定向（Admin+）
 - `DELETE /api/v1/redirects/:id` — 删除重定向（Admin+）
-- `POST /api/v1/redirects/bulk-delete` — 批量删除（Admin+）
+- `DELETE /api/v1/redirects/batch` — 批量删除（Admin+）
 - `POST /api/v1/redirects/import` — CSV 导入（Admin+）
 - `GET /api/v1/redirects/export` — CSV 导出（Admin+）
 
@@ -728,7 +728,7 @@ Then  返回英文版本内容
 8. 用户可通过 `POST /api/v1/auth/2fa/disable`（需当前密码 + TOTP 码/备用码）禁用 2FA，禁用后删除 `user_totp` 记录并吊销所有 refresh_token
 9. 用户可通过 `POST /api/v1/auth/2fa/backup-codes`（需当前密码）重新生成备用码，旧备用码全部失效
 10. `GET /api/v1/auth/2fa/status` 返回 2FA 启用状态、验证时间、剩余备用码数量
-11. SuperAdmin 可通过 `DELETE /api/v1/users/:id/2fa` 强制禁用其他用户的 2FA（需填写原因），同时吊销目标用户所有 refresh_token
+11. 超级管理员可通过 `DELETE /api/v1/auth/2fa/users/:user_id` 强制禁用其他用户的 2FA（需填写原因），同时吊销目标用户所有 refresh_token
 12. TOTP 密钥使用 AES-256-GCM 加密存储（密钥来自环境变量 `TOTP_ENCRYPTION_KEY`），2FA 配置位于 `public.sfc_user_totp` 表，用户级全局生效（不分站点）
 
 **相关 API 端点**
@@ -738,7 +738,7 @@ Then  返回英文版本内容
 - `POST /api/v1/auth/2fa/backup-codes` — 重新生成备用码
 - `GET /api/v1/auth/2fa/status` — 查询 2FA 状态
 - `POST /api/v1/auth/2fa/validate` — 登录流程中的 TOTP 验证
-- `DELETE /api/v1/users/:id/2fa` — SuperAdmin 强制禁用用户 2FA
+- `DELETE /api/v1/auth/2fa/users/:user_id` — 超级管理员强制禁用用户 2FA
 
 ---
 

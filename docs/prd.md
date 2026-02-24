@@ -28,7 +28,7 @@
 
 ```
 后端（API 服务）
-├── 语言框架：Go 1.24+ + Gin v1.11+
+├── 语言框架：Go 1.25+ + Gin v1.11+
 ├── 数据库：PostgreSQL 18（主库）
 │   └── 多站点支持：Schema Isolation（每站独立 schema `site_{slug}`）
 ├── 缓存：Redis 8（会话 / 热点内容 / 限流）
@@ -65,7 +65,7 @@
 
 #### 3.1.1 认证与权限（Auth & RBAC）
 - JWT 登录 / 登出，Refresh Token 自动续签
-- 基于角色的权限控制：SuperAdmin / Admin / Editor / Viewer（详细权限矩阵见 §3.1.12）
+- 基于动态 RBAC 的权限控制：内置 4 个角色（super / admin / editor / viewer），支持自定义角色，权限通过 `sfc_role_apis` 动态配置（详细权限矩阵见 §3.1.17）
 - 个人资料编辑、密码修改
 - 忘记密码：邮箱验证 → 重置令牌（30 分钟有效）→ 设置新密码
 - 密码策略：≥ 8 位，须包含大写字母和数字，详见 security.md
@@ -115,9 +115,9 @@
 
 #### 3.1.8 多站点管理（Multi-Site）
 - **Schema Isolation 架构**：每个站点拥有独立的 PostgreSQL schema（`site_{slug}`），内容表在站点 schema 中，全局表（users、sites）在 `public` schema
-- **站点 CRUD**：SuperAdmin 可创建、编辑、停用、删除站点
+- **站点 CRUD**：Super 可创建、编辑、停用、删除站点
 - **独立内容空间**：每个站点有独立的文章、分类、标签、媒体库、评论、菜单等
-- **Per-Site 角色分配**：同一用户可在不同站点拥有不同角色（如在站点 A 为 Admin，在站点 B 为 Editor）
+- **全局角色**：角色通过 `sfc_user_roles` 全局分配，权限通过 `sfc_role_apis` 动态控制
 - **域名映射**：支持为站点绑定自定义域名
 - **站点切换 UI**：管理后台顶部提供站点切换器，快速切换当前操作站点
 - **中间件链路**：请求通过 SiteResolverMiddleware → SchemaMiddleware 自动设置 `SET search_path TO 'site_{slug}', 'public'`
@@ -184,7 +184,7 @@
 - **备用码**：10 个一次性备用码（8 位字母数字，格式 XXXX-XXXX），bcrypt 哈希存储
 - **修改后的登录流程**：密码验证 → 临时令牌（5 分钟有效）→ TOTP 验证 → 签发正式 JWT
 - **用户级全局生效**：2FA 配置存储在 `public.sfc_user_totp`，启用后对该用户在所有站点的登录均生效
-- **管理员强制禁用**：SuperAdmin 可为锁定用户强制禁用 2FA（需填写原因）
+- **管理员强制禁用**：Super 可为锁定用户强制禁用 2FA（需填写原因）
 - **安全措施**：AES-256-GCM 加密 TOTP 密钥、TOTP 重放检测（Redis 90s TTL）、5 分钟内最多 5 次验证尝试
 
 #### 3.1.16 邮件通知场景
@@ -201,11 +201,14 @@
 
 #### 3.1.17 权限矩阵（RBAC）
 
-| 操作 | SuperAdmin | Admin | Editor | Viewer |
+> 权限通过 `sfc_role_apis` 动态配置。下表为内置角色的默认权限参考。管理员可通过 RBAC 管理 API 创建自定义角色并配置权限。
+
+| 操作 | Super | Admin | Editor | Viewer |
 |------|:---:|:---:|:---:|:---:|
 | 用户管理 | ✅ | ❌ | ❌ | ❌ |
 | 系统配置 | ✅ | ✅ | ❌ | ❌ |
 | 多站点管理（manage_sites） | ✅ | ❌ | ❌ | ❌ |
+| RBAC 管理 | ✅ | ❌ | ❌ | ❌ |
 | 内容 CRUD | ✅ | ✅ | ✅ | ❌ |
 | 内容查看 | ✅ | ✅ | ✅ | ✅ |
 | 媒体上传 | ✅ | ✅ | ✅ | ❌ |
