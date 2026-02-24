@@ -81,7 +81,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	engine := gin.New()
-	router.Setup(engine, db, rdb, meili, s3Client)
+	router.Setup(engine, db, rdb, meili, s3Client, cfg)
 
 	// HTTP server with graceful shutdown
 	srv := &http.Server{
