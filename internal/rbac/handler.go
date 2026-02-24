@@ -91,7 +91,7 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 		return
 	}
 
-	if role.BuiltIn && role.Slug == "super" {
+	if role.BuiltIn == model.ToggleYes && role.Slug == "super" {
 		response.Error(c, apperror.Forbidden("super role cannot be modified", nil))
 		return
 	}
@@ -129,7 +129,7 @@ func (h *Handler) DeleteRole(c *gin.Context) {
 		return
 	}
 
-	if role.BuiltIn {
+	if role.BuiltIn == model.ToggleYes {
 		response.Error(c, apperror.Forbidden("built-in roles cannot be deleted", nil))
 		return
 	}
@@ -364,7 +364,7 @@ func (h *Handler) DeleteTemplate(c *gin.Context) {
 		return
 	}
 
-	if tmpl.BuiltIn {
+	if tmpl.BuiltIn == model.ToggleYes {
 		response.Error(c, apperror.Forbidden("built-in templates cannot be deleted", nil))
 		return
 	}
@@ -388,7 +388,7 @@ func (h *Handler) ApplyTemplate(c *gin.Context) {
 		return
 	}
 
-	if role.BuiltIn && role.Slug == "super" {
+	if role.BuiltIn == model.ToggleYes && role.Slug == "super" {
 		response.Error(c, apperror.Forbidden("cannot modify super role permissions", nil))
 		return
 	}

@@ -48,7 +48,7 @@ func (r *Registry) SyncRoutes(ctx context.Context, engine *gin.Engine, metaMap m
 			Name:        meta.Name,
 			Description: meta.Description,
 			Group:       meta.Group,
-			Status:      true,
+			Status:      model.APIStatusActive,
 		})
 		activeKeys = append(activeKeys, key)
 	}

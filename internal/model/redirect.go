@@ -14,7 +14,7 @@ type Redirect struct {
 	SourcePath string     `bun:"source_path,notnull,unique" json:"source_path"`
 	TargetURL  string     `bun:"target_url,notnull" json:"target_url"`
 	StatusCode int        `bun:"status_code,notnull,default:301" json:"status_code"`
-	IsActive   bool       `bun:"is_active,notnull,default:true" json:"is_active"`
+	Status     RedirectStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
 	HitCount   int64      `bun:"hit_count,notnull,default:0" json:"hit_count"`
 	LastHitAt  *time.Time `bun:"last_hit_at" json:"last_hit_at,omitempty"`
 	CreatedBy  *string    `bun:"created_by,type:uuid" json:"created_by,omitempty"`

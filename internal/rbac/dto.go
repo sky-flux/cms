@@ -1,5 +1,7 @@
 package rbac
 
+import "github.com/sky-flux/cms/internal/model"
+
 // --- Role ---
 
 type CreateRoleReq struct {
@@ -9,9 +11,9 @@ type CreateRoleReq struct {
 }
 
 type UpdateRoleReq struct {
-	Name        string `json:"name" binding:"max=50"`
-	Description string `json:"description"`
-	Status      *bool  `json:"status"`
+	Name        string            `json:"name" binding:"max=50"`
+	Description string            `json:"description"`
+	Status      *model.RoleStatus `json:"status"`
 }
 
 // --- Role-API Permission ---
@@ -63,12 +65,12 @@ type CreateMenuReq struct {
 }
 
 type UpdateMenuReq struct {
-	ParentID  *string `json:"parent_id"`
-	Name      string  `json:"name" binding:"omitempty,max=50"`
-	Icon      *string `json:"icon"`
-	Path      *string `json:"path"`
-	SortOrder *int    `json:"sort_order"`
-	Status    *bool   `json:"status"`
+	ParentID  *string            `json:"parent_id"`
+	Name      string             `json:"name" binding:"omitempty,max=50"`
+	Icon      *string            `json:"icon"`
+	Path      *string            `json:"path"`
+	SortOrder *int               `json:"sort_order"`
+	Status    *model.MenuStatus  `json:"status"`
 }
 
 // --- Apply Template ---

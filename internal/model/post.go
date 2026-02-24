@@ -76,7 +76,7 @@ type PostCategoryMap struct {
 
 	PostID     string `bun:"post_id,pk,type:uuid" json:"post_id"`
 	CategoryID string `bun:"category_id,pk,type:uuid" json:"category_id"`
-	IsPrimary  bool   `bun:"is_primary,notnull,default:false" json:"is_primary"`
+	Primary    Toggle `bun:"primary,notnull,type:smallint,default:1" json:"primary"`
 }
 
 // PostTagMap maps to sfc_site_post_tag_map (many-to-many).

@@ -207,7 +207,7 @@ func TestHandlerLogin_2FARequired(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: true,
+		Enabled: model.ToggleYes,
 	}
 
 	r, _ := setupHandlerRouter(t, h)
@@ -399,7 +399,7 @@ func TestHandlerMe_Success(t *testing.T) {
 	assert.Equal(t, testUserID, data["id"])
 	assert.Equal(t, testUserEmail, data["email"])
 	assert.Equal(t, "Alice", data["display_name"])
-	assert.Equal(t, true, data["is_active"])
+	assert.Equal(t, float64(model.UserStatusActive), data["status"])
 
 	roles := data["roles"].([]interface{})
 	require.Len(t, roles, 1)
@@ -708,7 +708,7 @@ func TestHandlerSetup2FA_AlreadyEnabled(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: true,
+		Enabled: model.ToggleYes,
 	}
 
 	r, _ := setupHandlerRouter(t, h)
@@ -753,7 +753,7 @@ func TestHandlerGet2FAStatus_Enabled(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:         "totp-1",
 		UserID:     testUserID,
-		IsEnabled:  true,
+		Enabled:    model.ToggleYes,
 		VerifiedAt: &verifiedAt,
 	}
 
@@ -932,7 +932,7 @@ func TestHandlerRegenerateBackupCodes_Success(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: true,
+		Enabled: model.ToggleYes,
 	}
 
 	r, _ := setupHandlerRouter(t, h)

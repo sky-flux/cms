@@ -69,7 +69,7 @@ func (s *Service) Login(ctx context.Context, req *LoginReq, ip, userAgent string
 	if err != nil {
 		return nil, nil, apperror.Unauthorized("invalid email or password", nil)
 	}
-	if !user.IsActive {
+	if user.Status != model.UserStatusActive {
 		return nil, nil, apperror.Unauthorized("account is disabled", nil)
 	}
 
@@ -93,7 +93,7 @@ func (s *Service) Login(ctx context.Context, req *LoginReq, ip, userAgent string
 
 	// Check 2FA
 	totp, err := s.totpRepo.GetByUserID(ctx, user.ID)
-	if err == nil && totp.IsEnabled {
+	if err == nil && totp.Enabled == model.ToggleYes {
 		// Issue temp token for 2FA
 		tempToken, err := s.jwtMgr.SignTempToken(user.ID, "2fa_verification")
 		if err != nil {
@@ -194,7 +194,7 @@ func (s *Service) Me(ctx context.Context, userID string) (*MeResp, error) {
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
 		AvatarURL:   user.AvatarURL,
-		IsActive:    user.IsActive,
+		Status:      user.Status,
 		LastLoginAt: user.LastLoginAt,
 		Roles:       roleResps,
 		Sites:       siteResps,
@@ -280,7 +280,7 @@ func (s *Service) Setup2FA(ctx context.Context, userID string) (*Setup2FAResp, e
 
 	// Check if already enabled
 	existing, err := s.totpRepo.GetByUserID(ctx, userID)
-	if err == nil && existing.IsEnabled {
+	if err == nil && existing.Enabled == model.ToggleYes {
 		return nil, apperror.Conflict("2FA is already enabled", nil)
 	}
 
@@ -304,7 +304,7 @@ func (s *Service) Setup2FA(ctx context.Context, userID string) (*Setup2FAResp, e
 		UserID:          userID,
 		SecretEncrypted: encrypted,
 		BackupCodesHash: hashedCodes,
-		IsEnabled:       false,
+		Enabled:         model.ToggleNo,
 	}
 	if err := s.totpRepo.Upsert(ctx, totp); err != nil {
 		return nil, apperror.Internal("store TOTP record failed", err)
@@ -323,7 +323,7 @@ func (s *Service) Verify2FA(ctx context.Context, userID string, req *Verify2FARe
 	if err != nil {
 		return apperror.NotFound("2FA setup not found — call setup first", nil)
 	}
-	if totp.IsEnabled {
+	if totp.Enabled == model.ToggleYes {
 		return apperror.Conflict("2FA is already verified and enabled", nil)
 	}
 
@@ -450,7 +450,7 @@ func (s *Service) Get2FAStatus(ctx context.Context, userID string) (*Get2FAStatu
 		return nil, err
 	}
 	return &Get2FAStatusResp{
-		Enabled:    totp.IsEnabled,
+		Enabled:    totp.Enabled == model.ToggleYes,
 		VerifiedAt: totp.VerifiedAt,
 	}, nil
 }

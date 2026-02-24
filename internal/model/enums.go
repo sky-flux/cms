@@ -63,3 +63,84 @@ const (
 	LogActionPasswordChange                      // 10
 	LogActionSettingsChange                      // 11
 )
+
+// Toggle is a generic binary enum for fields like built_in, revoked, enabled, primary, pinned.
+// DDL: CHECK (field BETWEEN 1 AND 2)
+type Toggle int8
+
+const (
+	ToggleNo  Toggle = iota + 1 // 1
+	ToggleYes                   // 2
+)
+
+// UserStatus maps to sfc_users.status (SMALLINT)
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type UserStatus int8
+
+const (
+	UserStatusActive   UserStatus = iota + 1 // 1
+	UserStatusDisabled                       // 2
+)
+
+// SiteStatus maps to sfc_sites.status (SMALLINT)
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type SiteStatus int8
+
+const (
+	SiteStatusActive   SiteStatus = iota + 1 // 1
+	SiteStatusDisabled                       // 2
+)
+
+// RoleStatus maps to sfc_roles.status (SMALLINT)
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type RoleStatus int8
+
+const (
+	RoleStatusActive   RoleStatus = iota + 1 // 1
+	RoleStatusDisabled                       // 2
+)
+
+// APIStatus maps to sfc_apis.status (SMALLINT)
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type APIStatus int8
+
+const (
+	APIStatusActive   APIStatus = iota + 1 // 1
+	APIStatusDisabled                      // 2
+)
+
+// MenuStatus maps to sfc_menus.status (SMALLINT) — admin menus
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type MenuStatus int8
+
+const (
+	MenuStatusActive MenuStatus = iota + 1 // 1
+	MenuStatusHidden                       // 2
+)
+
+// APIKeyStatus maps to sfc_site_api_keys.status (SMALLINT)
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type APIKeyStatus int8
+
+const (
+	APIKeyStatusActive  APIKeyStatus = iota + 1 // 1
+	APIKeyStatusRevoked                         // 2
+)
+
+// RedirectStatus maps to sfc_site_redirects.status (SMALLINT)
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type RedirectStatus int8
+
+const (
+	RedirectStatusActive   RedirectStatus = iota + 1 // 1
+	RedirectStatusDisabled                           // 2
+)
+
+// MenuItemStatus maps to sfc_site_menu_items.status (SMALLINT)
+// DDL: CHECK (status BETWEEN 1 AND 2)
+type MenuItemStatus int8
+
+const (
+	MenuItemStatusActive MenuItemStatus = iota + 1 // 1
+	MenuItemStatusHidden                           // 2
+)

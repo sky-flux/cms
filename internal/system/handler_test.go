@@ -1,2 +1,1 @@
-package system
-// Tests will be added when business logic is implemented.
+package system_test

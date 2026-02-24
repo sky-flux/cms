@@ -18,7 +18,7 @@ type AdminMenu struct {
 	Icon      string       `bun:"icon" json:"icon,omitempty"`
 	Path      string       `bun:"path" json:"path,omitempty"`
 	SortOrder int          `bun:"sort_order,notnull,default:0" json:"sort_order"`
-	Status    bool         `bun:"status,notnull,default:true" json:"status"`
+	Status    MenuStatus   `bun:"status,notnull,type:smallint,default:1" json:"status"`
 	CreatedAt time.Time    `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt time.Time    `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 	Children  []*AdminMenu `bun:"rel:has-many,join:id=parent_id" json:"children,omitempty"`

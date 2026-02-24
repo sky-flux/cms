@@ -21,7 +21,7 @@ type Comment struct {
 	UserAgent   string        `bun:"user_agent" json:"-"`
 	Content     string        `bun:"content,notnull" json:"content"`
 	Status      CommentStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
-	IsPinned    bool          `bun:"is_pinned,notnull,default:false" json:"is_pinned"`
+	Pinned      Toggle        `bun:"pinned,notnull,type:smallint,default:1" json:"pinned"`
 	CreatedAt   time.Time     `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time     `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 	DeletedAt   *time.Time    `bun:"deleted_at,soft_delete,nullzero" json:"-"`

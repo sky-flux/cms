@@ -51,5 +51,30 @@ func BuildAPIMetaMap() map[string]rbac.APIMeta {
 		"GET:/api/v1/rbac/templates/:id":    {Name: "Get template", Description: "Get template details", Group: "rbac"},
 		"PUT:/api/v1/rbac/templates/:id":    {Name: "Update template", Description: "Update permission template", Group: "rbac"},
 		"DELETE:/api/v1/rbac/templates/:id": {Name: "Delete template", Description: "Delete permission template", Group: "rbac"},
+
+		// Users management
+		"GET:/api/v1/users":     {Name: "List users", Description: "List all CMS users", Group: "users"},
+		"POST:/api/v1/users":    {Name: "Create user", Description: "Create a new user", Group: "users"},
+		"GET:/api/v1/users/:id": {Name: "Get user", Description: "Get user details", Group: "users"},
+		"PUT:/api/v1/users/:id": {Name: "Update user", Description: "Update user details", Group: "users"},
+		"DELETE:/api/v1/users/:id": {Name: "Delete user", Description: "Soft delete a user", Group: "users"},
+
+		// Site-scoped: Settings
+		"GET:/api/v1/site/settings": {Name: "List settings", Description: "List site configuration", Group: "settings"},
+		"PUT:/api/v1/site/settings": {Name: "Update setting", Description: "Update a site configuration", Group: "settings"},
+
+		// Site-scoped: API Keys
+		"GET:/api/v1/site/api-keys":        {Name: "List API keys", Description: "List site API keys", Group: "api-keys"},
+		"POST:/api/v1/site/api-keys":       {Name: "Create API key", Description: "Create a new API key", Group: "api-keys"},
+		"DELETE:/api/v1/site/api-keys/:id": {Name: "Revoke API key", Description: "Revoke an API key", Group: "api-keys"},
+
+		// Site-scoped: Post Types
+		"GET:/api/v1/site/post-types":        {Name: "List post types", Description: "List content types", Group: "post-types"},
+		"POST:/api/v1/site/post-types":       {Name: "Create post type", Description: "Create a content type", Group: "post-types"},
+		"PUT:/api/v1/site/post-types/:id":    {Name: "Update post type", Description: "Update a content type", Group: "post-types"},
+		"DELETE:/api/v1/site/post-types/:id": {Name: "Delete post type", Description: "Delete a content type", Group: "post-types"},
+
+		// Site-scoped: Audit Logs
+		"GET:/api/v1/site/audit-logs": {Name: "List audit logs", Description: "Query audit trail", Group: "audit"},
 	}
 }

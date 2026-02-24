@@ -11,7 +11,7 @@ CREATE TABLE {schema}.sfc_site_post_types (
     slug        VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     fields      JSONB NOT NULL DEFAULT '[]',
-    built_in    BOOLEAN NOT NULL DEFAULT FALSE,
+    built_in    SMALLINT NOT NULL DEFAULT 1,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -117,7 +117,7 @@ CREATE TABLE {schema}.sfc_site_tags (
 CREATE TABLE {schema}.sfc_site_post_category_map (
     post_id     UUID NOT NULL REFERENCES {schema}.sfc_site_posts(id) ON DELETE CASCADE,
     category_id UUID NOT NULL REFERENCES {schema}.sfc_site_categories(id) ON DELETE CASCADE,
-    is_primary  BOOLEAN NOT NULL DEFAULT FALSE,
+    "primary"   SMALLINT NOT NULL DEFAULT 1,
     PRIMARY KEY (post_id, category_id)
 );
 
@@ -175,7 +175,7 @@ CREATE TABLE {schema}.sfc_site_comments (
     user_agent    TEXT,
     content       TEXT NOT NULL,
     status        SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 4),
-    is_pinned     BOOLEAN NOT NULL DEFAULT FALSE,
+    pinned        SMALLINT NOT NULL DEFAULT 1,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at    TIMESTAMPTZ,
@@ -216,7 +216,7 @@ CREATE TABLE {schema}.sfc_site_menu_items (
     type          SMALLINT NOT NULL DEFAULT 1 CHECK (type BETWEEN 1 AND 5),
     reference_id  UUID,
     sort_order    INT NOT NULL DEFAULT 0,
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    status        SMALLINT NOT NULL DEFAULT 1,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -233,7 +233,7 @@ CREATE TABLE {schema}.sfc_site_redirects (
     source_path   VARCHAR(500) NOT NULL UNIQUE,
     target_url    TEXT NOT NULL,
     status_code   INT NOT NULL DEFAULT 301,
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    status        SMALLINT NOT NULL DEFAULT 1,
     hit_count     BIGINT NOT NULL DEFAULT 0,
     last_hit_at   TIMESTAMPTZ,
     created_by    UUID REFERENCES public.sfc_users(id),
@@ -243,7 +243,7 @@ CREATE TABLE {schema}.sfc_site_redirects (
 );
 
 CREATE INDEX idx_sfc_site_redirects_source ON {schema}.sfc_site_redirects(source_path)
-    WHERE is_active = TRUE;
+    WHERE status = 1;
 CREATE INDEX idx_sfc_site_redirects_created ON {schema}.sfc_site_redirects(created_at DESC);
 
 -- 14. 草稿预览令牌表
@@ -268,7 +268,7 @@ CREATE TABLE {schema}.sfc_site_api_keys (
     name         VARCHAR(100) NOT NULL,
     key_hash     VARCHAR(255) NOT NULL UNIQUE,
     key_prefix   VARCHAR(20) NOT NULL,
-    is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+    status       SMALLINT NOT NULL DEFAULT 1,
     last_used_at TIMESTAMPTZ,
     expires_at   TIMESTAMPTZ,
     rate_limit   INT NOT NULL DEFAULT 100,

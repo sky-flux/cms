@@ -15,7 +15,7 @@ type User struct {
 	PasswordHash string     `bun:"password_hash,notnull" json:"-"`
 	DisplayName  string     `bun:"display_name,notnull" json:"display_name"`
 	AvatarURL    string     `bun:"avatar_url" json:"avatar_url,omitempty"`
-	IsActive     bool       `bun:"is_active,notnull,default:true" json:"is_active"`
+	Status       UserStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
 	LastLoginAt  *time.Time `bun:"last_login_at" json:"last_login_at,omitempty"`
 	CreatedAt    time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt    time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`

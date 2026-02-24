@@ -237,7 +237,7 @@ func makeUser(t *testing.T) *model.User {
 		Email:        testUserEmail,
 		PasswordHash: hash,
 		DisplayName:  "Alice",
-		IsActive:     true,
+		Status:       model.UserStatusActive,
 		LastLoginAt:  &now,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -306,7 +306,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 func TestLogin_InactiveUser(t *testing.T) {
 	h := newHarness(t)
 	user := makeUser(t)
-	user.IsActive = false
+	user.Status = model.UserStatusDisabled
 	h.userRepo.byEmail = user
 
 	_, _, err := h.svc.Login(context.Background(),
@@ -347,7 +347,7 @@ func TestLogin_2FARequired(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: true,
+		Enabled: model.ToggleYes,
 	}
 
 	loginResp, twoFAResp, err := h.svc.Login(context.Background(),
@@ -533,7 +533,7 @@ func TestMe_Success(t *testing.T) {
 	assert.Equal(t, testUserID, resp.ID)
 	assert.Equal(t, testUserEmail, resp.Email)
 	assert.Equal(t, "Alice", resp.DisplayName)
-	assert.True(t, resp.IsActive)
+	assert.Equal(t, model.UserStatusActive, resp.Status)
 	require.Len(t, resp.Roles, 1)
 	assert.Equal(t, "admin", resp.Roles[0].Slug)
 	require.Len(t, resp.Sites, 1)
@@ -695,9 +695,9 @@ func TestSetup2FA_Success(t *testing.T) {
 	assert.NotEmpty(t, resp.Secret)
 	assert.NotEmpty(t, resp.QRCodeURI)
 	assert.Len(t, resp.BackupCodes, 10)
-	// Verify the TOTP record was upserted with IsEnabled=false
+	// Verify the TOTP record was upserted with Enabled=ToggleNo
 	require.NotNil(t, h.totpRepo.lastUpsertedRecord)
-	assert.False(t, h.totpRepo.lastUpsertedRecord.IsEnabled)
+	assert.Equal(t, model.ToggleNo, h.totpRepo.lastUpsertedRecord.Enabled)
 	assert.Equal(t, testUserID, h.totpRepo.lastUpsertedRecord.UserID)
 }
 
@@ -708,7 +708,7 @@ func TestSetup2FA_AlreadyEnabled(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: true,
+		Enabled: model.ToggleYes,
 	}
 
 	resp, err := h.svc.Setup2FA(context.Background(), testUserID)
@@ -728,7 +728,7 @@ func TestSetup2FA_NotYetEnabled_AllowsReSetup(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: false,
+		Enabled: model.ToggleNo,
 	}
 
 	resp, err := h.svc.Setup2FA(context.Background(), testUserID)
@@ -755,7 +755,7 @@ func TestVerify2FA_Success(t *testing.T) {
 		ID:              "totp-1",
 		UserID:          testUserID,
 		SecretEncrypted: encrypted,
-		IsEnabled:       false, // not yet enabled
+		Enabled:         model.ToggleNo, // not yet enabled
 	}
 
 	// Generate a valid TOTP code from the secret
@@ -780,7 +780,7 @@ func TestVerify2FA_InvalidCode(t *testing.T) {
 		ID:              "totp-1",
 		UserID:          testUserID,
 		SecretEncrypted: encrypted,
-		IsEnabled:       false,
+		Enabled:         model.ToggleNo,
 	}
 
 	err = h.svc.Verify2FA(context.Background(), testUserID, &auth.Verify2FAReq{Code: "000000"})
@@ -797,7 +797,7 @@ func TestVerify2FA_AlreadyEnabled(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: true,
+		Enabled: model.ToggleYes,
 	}
 
 	err := h.svc.Verify2FA(context.Background(), testUserID, &auth.Verify2FAReq{Code: "123456"})
@@ -838,7 +838,7 @@ func TestValidate2FA_SuccessWithTOTPCode(t *testing.T) {
 		ID:              "totp-1",
 		UserID:          testUserID,
 		SecretEncrypted: encrypted,
-		IsEnabled:       true,
+		Enabled:         model.ToggleYes,
 	}
 
 	code, err := totp.GenerateCode(key.Secret(), time.Now())
@@ -874,7 +874,7 @@ func TestValidate2FA_SuccessWithBackupCode(t *testing.T) {
 		ID:              "totp-1",
 		UserID:          testUserID,
 		SecretEncrypted: encrypted,
-		IsEnabled:       true,
+		Enabled:         model.ToggleYes,
 		BackupCodesHash: []string{otherHash, backupHash},
 	}
 
@@ -903,7 +903,7 @@ func TestValidate2FA_InvalidCode(t *testing.T) {
 		ID:              "totp-1",
 		UserID:          testUserID,
 		SecretEncrypted: encrypted,
-		IsEnabled:       true,
+		Enabled:         model.ToggleYes,
 		BackupCodesHash: []string{crypto.HashToken("REAL-CODE")},
 	}
 
@@ -951,7 +951,7 @@ func TestDisable2FA_Success(t *testing.T) {
 		ID:              "totp-1",
 		UserID:          testUserID,
 		SecretEncrypted: encrypted,
-		IsEnabled:       true,
+		Enabled:         model.ToggleYes,
 	}
 
 	code, err := totp.GenerateCode(key.Secret(), time.Now())
@@ -995,7 +995,7 @@ func TestDisable2FA_InvalidTOTPCode(t *testing.T) {
 		ID:              "totp-1",
 		UserID:          testUserID,
 		SecretEncrypted: encrypted,
-		IsEnabled:       true,
+		Enabled:         model.ToggleYes,
 	}
 
 	err = h.svc.Disable2FA(context.Background(), testUserID,
@@ -1035,7 +1035,7 @@ func TestRegenerateBackupCodes_Success(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: true,
+		Enabled: model.ToggleYes,
 	}
 
 	resp, err := h.svc.RegenerateBackupCodes(context.Background(), testUserID,
@@ -1093,7 +1093,7 @@ func TestGet2FAStatus_Enabled(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:         "totp-1",
 		UserID:     testUserID,
-		IsEnabled:  true,
+		Enabled:    model.ToggleYes,
 		VerifiedAt: &verifiedAt,
 	}
 
@@ -1122,7 +1122,7 @@ func TestGet2FAStatus_SetupButNotEnabled(t *testing.T) {
 	h.totpRepo.getByUserID = &model.UserTOTP{
 		ID:        "totp-1",
 		UserID:    testUserID,
-		IsEnabled: false,
+		Enabled: model.ToggleNo,
 	}
 
 	resp, err := h.svc.Get2FAStatus(context.Background(), testUserID)

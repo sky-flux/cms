@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"github.com/sky-flux/cms/internal/model"
+)
 
 // --- Login ---
 type LoginReq struct {
@@ -42,7 +46,7 @@ type MeResp struct {
 	Email       string     `json:"email"`
 	DisplayName string     `json:"display_name"`
 	AvatarURL   string     `json:"avatar_url,omitempty"`
-	IsActive    bool       `json:"is_active"`
+	Status      model.UserStatus `json:"status"`
 	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
 	Roles       []RoleResp `json:"roles"`
 	Sites       []SiteResp `json:"sites,omitempty"`

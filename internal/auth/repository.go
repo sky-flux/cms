@@ -74,7 +74,7 @@ func (r *authTokenRepo) GetRefreshTokenByHash(ctx context.Context, hash string) 
 	var token model.RefreshToken
 	err := r.db.NewSelect().Model(&token).
 		Where("token_hash = ?", hash).
-		Where("revoked = false").
+		Where("revoked = ?", model.ToggleNo).
 		Where("expires_at > NOW()").
 		Scan(ctx)
 	if err != nil {
@@ -85,7 +85,7 @@ func (r *authTokenRepo) GetRefreshTokenByHash(ctx context.Context, hash string) 
 
 func (r *authTokenRepo) RevokeRefreshToken(ctx context.Context, id string) error {
 	_, err := r.db.NewUpdate().Model((*model.RefreshToken)(nil)).
-		Set("revoked = true").
+		Set("revoked = ?", model.ToggleYes).
 		Where("id = ?", id).
 		Exec(ctx)
 	return err
@@ -93,9 +93,9 @@ func (r *authTokenRepo) RevokeRefreshToken(ctx context.Context, id string) error
 
 func (r *authTokenRepo) RevokeAllUserTokens(ctx context.Context, userID string) error {
 	_, err := r.db.NewUpdate().Model((*model.RefreshToken)(nil)).
-		Set("revoked = true").
+		Set("revoked = ?", model.ToggleYes).
 		Where("user_id = ?", userID).
-		Where("revoked = false").
+		Where("revoked = ?", model.ToggleNo).
 		Exec(ctx)
 	return err
 }
@@ -151,7 +151,7 @@ func (r *authTOTPRepo) Upsert(ctx context.Context, totp *model.UserTOTP) error {
 		On("CONFLICT (user_id) DO UPDATE").
 		Set("secret_encrypted = EXCLUDED.secret_encrypted").
 		Set("backup_codes_hash = EXCLUDED.backup_codes_hash").
-		Set("is_enabled = EXCLUDED.is_enabled").
+		Set("enabled = EXCLUDED.enabled").
 		Set("verified_at = EXCLUDED.verified_at").
 		Set("updated_at = NOW()").
 		Exec(ctx)
@@ -161,7 +161,7 @@ func (r *authTOTPRepo) Upsert(ctx context.Context, totp *model.UserTOTP) error {
 func (r *authTOTPRepo) Enable(ctx context.Context, id string) error {
 	now := time.Now()
 	_, err := r.db.NewUpdate().Model((*model.UserTOTP)(nil)).
-		Set("is_enabled = true").
+		Set("enabled = ?", model.ToggleYes).
 		Set("verified_at = ?", now).
 		Where("id = ?", id).
 		Exec(ctx)
@@ -220,7 +220,7 @@ func (r *authSiteLoader) GetUserSites(ctx context.Context, userID string) ([]mod
 	// TODO: filter by user role assignments when site-level RBAC is implemented
 	var sites []model.Site
 	err := r.db.NewSelect().Model(&sites).
-		Where("is_active = true").
+		Where("status = ?", model.SiteStatusActive).
 		Scan(ctx)
 	if err != nil {
 		return nil, err

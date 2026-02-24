@@ -14,7 +14,7 @@ type APIKey struct {
 	Name       string     `bun:"name,notnull" json:"name"`
 	KeyHash    string     `bun:"key_hash,notnull,unique" json:"-"`
 	KeyPrefix  string     `bun:"key_prefix,notnull" json:"key_prefix"`
-	IsActive   bool       `bun:"is_active,notnull,default:true" json:"is_active"`
+	Status     APIKeyStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
 	LastUsedAt *time.Time `bun:"last_used_at" json:"last_used_at,omitempty"`
 	ExpiresAt  *time.Time `bun:"expires_at" json:"expires_at,omitempty"`
 	RateLimit  int        `bun:"rate_limit,notnull,default:100" json:"rate_limit"`

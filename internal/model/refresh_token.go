@@ -13,7 +13,7 @@ type RefreshToken struct {
 	UserID    string    `bun:"user_id,notnull,type:uuid" json:"user_id"`
 	TokenHash string    `bun:"token_hash,notnull,unique" json:"-"`
 	ExpiresAt time.Time `bun:"expires_at,notnull" json:"expires_at"`
-	Revoked   bool      `bun:"revoked,notnull,default:false" json:"revoked"`
+	Revoked   Toggle    `bun:"revoked,notnull,type:smallint,default:1" json:"revoked"`
 	IPAddress string    `bun:"ip_address,type:inet" json:"ip_address,omitempty"`
 	UserAgent string    `bun:"user_agent" json:"user_agent,omitempty"`
 	CreatedAt time.Time `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`

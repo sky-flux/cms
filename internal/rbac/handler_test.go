@@ -226,7 +226,7 @@ func TestHandler_CreateRole_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_UpdateRole_SuperProtected(t *testing.T) {
-	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "1", Slug: "super", BuiltIn: true}}
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "1", Slug: "super", BuiltIn: model.ToggleYes}}
 	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
 
 	r := gin.New()
@@ -248,7 +248,7 @@ func TestHandler_UpdateRole_NotFound(t *testing.T) {
 }
 
 func TestHandler_DeleteRole_Success(t *testing.T) {
-	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "1", Slug: "custom", BuiltIn: false}}
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "1", Slug: "custom", BuiltIn: model.ToggleNo}}
 	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
 
 	r := gin.New()
@@ -259,7 +259,7 @@ func TestHandler_DeleteRole_Success(t *testing.T) {
 }
 
 func TestHandler_DeleteRole_BuiltInProtected(t *testing.T) {
-	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "1", Slug: "admin", BuiltIn: true}}
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "1", Slug: "admin", BuiltIn: model.ToggleYes}}
 	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
 
 	r := gin.New()
@@ -290,7 +290,7 @@ func TestHandler_SetRoleAPIs_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_DeleteTemplate_BuiltIn(t *testing.T) {
-	templateRepo := &handlerMockTemplateRepo{byID: &model.RoleTemplate{ID: "1", BuiltIn: true}}
+	templateRepo := &handlerMockTemplateRepo{byID: &model.RoleTemplate{ID: "1", BuiltIn: model.ToggleYes}}
 	h := setupHandlerTest(t, nil, nil, nil, nil, templateRepo)
 
 	r := gin.New()
@@ -374,7 +374,7 @@ func TestHandler_GetTemplate_NotFound(t *testing.T) {
 }
 
 func TestHandler_ApplyTemplate_Success(t *testing.T) {
-	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "r1", Slug: "editor", BuiltIn: false}}
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "r1", Slug: "editor", BuiltIn: model.ToggleNo}}
 	tmplRepo := &handlerMockTemplateRepo{byID: &model.RoleTemplate{ID: "t1"}}
 	h := setupHandlerTest(t, roleRepo, nil, &handlerMockRoleAPIRepo{}, nil, tmplRepo)
 
@@ -386,7 +386,7 @@ func TestHandler_ApplyTemplate_Success(t *testing.T) {
 }
 
 func TestHandler_ApplyTemplate_SuperProtected(t *testing.T) {
-	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "r1", Slug: "super", BuiltIn: true}}
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "r1", Slug: "super", BuiltIn: model.ToggleYes}}
 	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
 
 	r := gin.New()

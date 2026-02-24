@@ -16,6 +16,7 @@ type Config struct {
 	JWT         JWTConfig
 	TOTP        TOTPConfig
 	RustFS      RustFSConfig
+	Resend      ResendConfig
 	Log         LogConfig
 }
 
@@ -77,6 +78,12 @@ type RustFSConfig struct {
 	Region    string
 }
 
+type ResendConfig struct {
+	APIKey    string
+	FromName  string
+	FromEmail string
+}
+
 type LogConfig struct {
 	Level  string
 	Format string
@@ -114,6 +121,8 @@ func Load(cfgFile string) (*Config, error) {
 	viper.SetDefault("RUSTFS_SECRET_KEY", "rustfsadmin")
 	viper.SetDefault("RUSTFS_BUCKET", "cms-media")
 	viper.SetDefault("RUSTFS_REGION", "us-east-1")
+	viper.SetDefault("RESEND_FROM_NAME", "Sky Flux CMS")
+	viper.SetDefault("RESEND_FROM_EMAIL", "noreply@example.com")
 	viper.SetDefault("LOG_LEVEL", "debug")
 	viper.SetDefault("LOG_FORMAT", "json")
 
@@ -182,6 +191,11 @@ func Load(cfgFile string) (*Config, error) {
 			SecretKey: viper.GetString("RUSTFS_SECRET_KEY"),
 			Bucket:    viper.GetString("RUSTFS_BUCKET"),
 			Region:    viper.GetString("RUSTFS_REGION"),
+		},
+		Resend: ResendConfig{
+			APIKey:    viper.GetString("RESEND_API_KEY"),
+			FromName:  viper.GetString("RESEND_FROM_NAME"),
+			FromEmail: viper.GetString("RESEND_FROM_EMAIL"),
 		},
 		Log: LogConfig{
 			Level:  viper.GetString("LOG_LEVEL"),

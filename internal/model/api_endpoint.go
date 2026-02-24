@@ -16,7 +16,7 @@ type APIEndpoint struct {
 	Name        string    `bun:"name,notnull" json:"name"`
 	Description string    `bun:"description" json:"description,omitempty"`
 	Group       string    `bun:"group,notnull" json:"group"`
-	Status      bool      `bun:"status,notnull,default:true" json:"status"`
+	Status      APIStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
 	CreatedAt   time.Time `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 }

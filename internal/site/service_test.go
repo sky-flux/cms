@@ -155,7 +155,7 @@ func testSite() *model.Site {
 		Domain:        "test.example.com",
 		DefaultLocale: "zh-CN",
 		Timezone:      "Asia/Shanghai",
-		IsActive:      true,
+		Status:        model.SiteStatusActive,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}

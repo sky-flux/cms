@@ -90,7 +90,7 @@ func (r *RoleRepo) Delete(ctx context.Context, id string) error {
 	_, err := r.db.NewDelete().
 		Model((*model.Role)(nil)).
 		Where("id = ?", id).
-		Where("built_in = false").
+		Where("built_in = ?", model.ToggleNo).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("role delete: %w", err)

@@ -18,7 +18,7 @@ type Site struct {
 	LogoURL       string     `bun:"logo_url" json:"logo_url,omitempty"`
 	DefaultLocale string     `bun:"default_locale,notnull,default:'zh-CN'" json:"default_locale"`
 	Timezone      string     `bun:"timezone,notnull,default:'Asia/Shanghai'" json:"timezone"`
-	IsActive      bool       `bun:"is_active,notnull,default:true" json:"is_active"`
+	Status        SiteStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
 	Settings      string     `bun:"settings,type:jsonb,default:'{}'" json:"settings"`
 	CreatedAt     time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt     time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sky-flux/cms/internal/model"
 	"github.com/sky-flux/cms/internal/pkg/apperror"
 	"github.com/sky-flux/cms/internal/pkg/response"
 )
@@ -25,9 +26,11 @@ func (h *Handler) ListSites(c *gin.Context) {
 		PerPage: perPage,
 		Query:   c.Query("q"),
 	}
-	if v := c.Query("is_active"); v != "" {
-		active := v == "true"
-		f.IsActive = &active
+	if v := c.Query("status"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			st := model.SiteStatus(n)
+			f.Status = &st
+		}
 	}
 
 	sites, total, err := h.svc.ListSites(c.Request.Context(), f)

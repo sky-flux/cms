@@ -41,7 +41,7 @@ type SiteMenuItem struct {
 	Type        MenuItemType `bun:"type,notnull,type:smallint,default:1" json:"type"`
 	ReferenceID *string      `bun:"reference_id,type:uuid" json:"reference_id,omitempty"`
 	SortOrder   int          `bun:"sort_order,notnull,default:0" json:"sort_order"`
-	IsActive    bool         `bun:"is_active,notnull,default:true" json:"is_active"`
+	Status      MenuItemStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
 	CreatedAt   time.Time    `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time    `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 

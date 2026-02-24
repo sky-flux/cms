@@ -9,10 +9,10 @@ import (
 // --- Filters ---
 
 type ListFilter struct {
-	Page     int
-	PerPage  int
-	Query    string
-	IsActive *bool
+	Page    int
+	PerPage int
+	Query   string
+	Status  *model.SiteStatus
 }
 
 type UserFilter struct {
@@ -40,7 +40,7 @@ type UpdateSiteReq struct {
 	LogoURL       *string `json:"logo_url" binding:"omitempty,url"`
 	DefaultLocale *string `json:"default_locale"`
 	Timezone      *string `json:"timezone"`
-	IsActive      *bool   `json:"is_active"`
+	Status        *model.SiteStatus `json:"status"`
 	Settings      *string `json:"settings"`
 }
 
@@ -63,7 +63,7 @@ type SiteResp struct {
 	LogoURL       string    `json:"logo_url,omitempty"`
 	DefaultLocale string    `json:"default_locale"`
 	Timezone      string    `json:"timezone"`
-	IsActive      bool      `json:"is_active"`
+	Status        model.SiteStatus `json:"status"`
 	Settings      string    `json:"settings,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -79,7 +79,7 @@ func ToSiteResp(s *model.Site) SiteResp {
 		LogoURL:       s.LogoURL,
 		DefaultLocale: s.DefaultLocale,
 		Timezone:      s.Timezone,
-		IsActive:      s.IsActive,
+		Status:        s.Status,
 		Settings:      s.Settings,
 		CreatedAt:     s.CreatedAt,
 		UpdatedAt:     s.UpdatedAt,
@@ -112,7 +112,7 @@ type UserBriefResp struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`
 	AvatarURL   string `json:"avatar_url,omitempty"`
-	IsActive    bool   `json:"is_active"`
+	Status      model.UserStatus `json:"status"`
 }
 
 func ToSiteUserRespList(items []UserWithRole) []SiteUserResp {
@@ -124,7 +124,7 @@ func ToSiteUserRespList(items []UserWithRole) []SiteUserResp {
 				Email:       item.User.Email,
 				DisplayName: item.User.DisplayName,
 				AvatarURL:   item.User.AvatarURL,
-				IsActive:    item.User.IsActive,
+				Status:      item.User.Status,
 			},
 			Role:      item.RoleSlug,
 			CreatedAt: item.CreatedAt,

@@ -66,7 +66,7 @@ func (r *TemplateRepo) Delete(ctx context.Context, id string) error {
 	_, err := r.db.NewDelete().
 		Model((*model.RoleTemplate)(nil)).
 		Where("id = ?", id).
-		Where("built_in = false").
+		Where("built_in = ?", model.ToggleNo).
 		Exec(ctx)
 	return err
 }

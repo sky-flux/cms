@@ -26,7 +26,7 @@ func NewAPIRepo(db *bun.DB) *APIRepo {
 // On conflict (method, path), existing rows are updated.
 func (r *APIRepo) UpsertBatch(ctx context.Context, endpoints []model.APIEndpoint) error {
 	for i := range endpoints {
-		endpoints[i].Status = true
+		endpoints[i].Status = model.APIStatusActive
 		_, err := r.db.NewInsert().
 			Model(&endpoints[i]).
 			On("CONFLICT (method, path) DO UPDATE").
@@ -51,8 +51,8 @@ func (r *APIRepo) DisableStale(ctx context.Context, activeKeys []string) error {
 		// No active keys means disable everything.
 		_, err := r.db.NewUpdate().
 			Model((*model.APIEndpoint)(nil)).
-			Set("status = false").
-			Where("status = true").
+			Set("status = ?", model.APIStatusDisabled).
+			Where("status = ?", model.APIStatusActive).
 			Exec(ctx)
 		if err != nil {
 			return fmt.Errorf("api disable all: %w", err)
@@ -69,8 +69,10 @@ func (r *APIRepo) DisableStale(ctx context.Context, activeKeys []string) error {
 	}
 
 	query := fmt.Sprintf(
-		`UPDATE sfc_apis SET status = false, updated_at = NOW() WHERE method || ':' || path NOT IN (%s) AND status = true`,
+		`UPDATE sfc_apis SET status = %d, updated_at = NOW() WHERE method || ':' || path NOT IN (%s) AND status = %d`,
+		model.APIStatusDisabled,
 		strings.Join(placeholders, ", "),
+		model.APIStatusActive,
 	)
 	_, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {

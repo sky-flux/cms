@@ -12,14 +12,55 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/uptrace/bun"
 
+	"github.com/sky-flux/cms/internal/apikey"
+	"github.com/sky-flux/cms/internal/audit"
 	"github.com/sky-flux/cms/internal/auth"
 	"github.com/sky-flux/cms/internal/config"
 	"github.com/sky-flux/cms/internal/middleware"
+	"github.com/sky-flux/cms/internal/model"
+	pkgaudit "github.com/sky-flux/cms/internal/pkg/audit"
 	"github.com/sky-flux/cms/internal/pkg/jwt"
+	"github.com/sky-flux/cms/internal/pkg/mail"
+	"github.com/sky-flux/cms/internal/posttype"
 	"github.com/sky-flux/cms/internal/rbac"
 	"github.com/sky-flux/cms/internal/setup"
 	"github.com/sky-flux/cms/internal/site"
+	"github.com/sky-flux/cms/internal/system"
+	"github.com/sky-flux/cms/internal/user"
 )
+
+// siteLookupAdapter implements middleware.SiteLookup using direct DB queries.
+type siteLookupAdapter struct {
+	db *bun.DB
+}
+
+func (a *siteLookupAdapter) GetIDBySlug(ctx context.Context, slug string) (string, error) {
+	var id string
+	err := a.db.NewSelect().
+		Model((*model.Site)(nil)).
+		Column("id").
+		Where("slug = ?", slug).
+		Where("status = ?", model.SiteStatusActive).
+		Scan(ctx, &id)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+func (a *siteLookupAdapter) GetSlugByDomain(ctx context.Context, domain string) (string, string, error) {
+	var site model.Site
+	err := a.db.NewSelect().
+		Model(&site).
+		Column("id", "slug").
+		Where("domain = ?", domain).
+		Where("status = ?", model.SiteStatusActive).
+		Scan(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	return site.Slug, site.ID, nil
+}
 
 func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.ServiceManager, s3Client *s3.Client, cfg *config.Config) {
 	// Global middleware chain
@@ -156,6 +197,72 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	rbacMe := v1.Group("/rbac")
 	rbacMe.Use(middleware.Auth(jwtMgr))
 	rbacMe.GET("/me/menus", rbacHandler.GetMyMenus)
+
+	// ── Shared services ──────────────────────────────────────────
+	auditSvc := pkgaudit.NewService(db)
+	var mailer mail.Sender
+	if cfg.Resend.APIKey != "" {
+		mailer = mail.NewResendSender(cfg.Resend.APIKey, cfg.Resend.FromName, cfg.Resend.FromEmail)
+	} else {
+		mailer = &mail.NoopSender{}
+	}
+
+	// ── User module (global scope — manages all CMS users) ──────
+	userRepo := user.NewUserRepo(db)
+	userRoleRepo := user.NewRoleRepo(db)
+	userURRepo := user.NewUserRoleRepo(db)
+	userTokenRevoker := user.NewTokenRevoker(db)
+	userSvc := user.NewService(userRepo, userRoleRepo, userURRepo, userTokenRevoker, auditSvc, mailer, cfg.Resend.FromName)
+	userHandler := user.NewHandler(userSvc)
+
+	// Users management (JWT + AuditContext + RBAC)
+	users := v1.Group("/users")
+	users.Use(middleware.Auth(jwtMgr))
+	users.Use(middleware.AuditContext())
+	users.Use(middleware.RBAC(rbacSvc))
+	users.GET("", userHandler.List)
+	users.POST("", userHandler.Create)
+	users.GET("/:id", userHandler.Get)
+	users.PUT("/:id", userHandler.Update)
+	users.DELETE("/:id", userHandler.Delete)
+
+	// ── Site-scoped modules ──────────────────────────────────────
+	siteLookup := &siteLookupAdapter{db: db}
+	siteScoped := v1.Group("/site")
+	siteScoped.Use(middleware.SiteResolver(siteLookup))
+	siteScoped.Use(middleware.Schema(db))
+	siteScoped.Use(middleware.AuditContext())
+	siteScoped.Use(middleware.Auth(jwtMgr))
+	siteScoped.Use(middleware.RBAC(rbacSvc))
+
+	// Settings
+	settingsRepo := system.NewConfigRepo(db)
+	settingsSvc := system.NewService(settingsRepo, auditSvc)
+	settingsHandler := system.NewHandler(settingsSvc)
+	siteScoped.GET("/settings", settingsHandler.ListSettings)
+	siteScoped.PUT("/settings", settingsHandler.UpdateSetting)
+
+	// API Keys
+	apikeyRepo := apikey.NewRepo(db)
+	apikeySvc := apikey.NewService(apikeyRepo, auditSvc)
+	apikeyHandler := apikey.NewHandler(apikeySvc)
+	siteScoped.GET("/api-keys", apikeyHandler.ListAPIKeys)
+	siteScoped.POST("/api-keys", apikeyHandler.CreateAPIKey)
+	siteScoped.DELETE("/api-keys/:id", apikeyHandler.RevokeAPIKey)
+
+	// Post Types
+	posttypeRepo := posttype.NewRepo(db)
+	posttypeSvc := posttype.NewService(posttypeRepo, auditSvc)
+	posttypeHandler := posttype.NewHandler(posttypeSvc)
+	siteScoped.GET("/post-types", posttypeHandler.List)
+	siteScoped.POST("/post-types", posttypeHandler.Create)
+	siteScoped.PUT("/post-types/:id", posttypeHandler.Update)
+	siteScoped.DELETE("/post-types/:id", posttypeHandler.Delete)
+
+	// Audit Logs
+	auditRepo := audit.NewAuditRepo(db)
+	auditHandler := audit.NewHandler(auditRepo)
+	siteScoped.GET("/audit-logs", auditHandler.ListAuditLogs)
 
 	// ── API Registry — sync routes to sfc_apis ──────────────────
 	registry := rbac.NewRegistry(rbacAPIRepo)

@@ -29,8 +29,8 @@ func (r *SiteRepo) List(ctx context.Context, f ListFilter) ([]model.Site, int64,
 	if f.Query != "" {
 		q = q.Where("(name ILIKE ? OR slug ILIKE ?)", "%"+f.Query+"%", "%"+f.Query+"%")
 	}
-	if f.IsActive != nil {
-		q = q.Where("is_active = ?", *f.IsActive)
+	if f.Status != nil {
+		q = q.Where("status = ?", *f.Status)
 	}
 
 	total, err := q.Count(ctx)
@@ -90,7 +90,7 @@ func (r *SiteRepo) Delete(ctx context.Context, id string) error {
 }
 
 func (r *SiteRepo) CountActive(ctx context.Context) (int64, error) {
-	count, err := r.db.NewSelect().Model((*model.Site)(nil)).Where("is_active = true").Count(ctx)
+	count, err := r.db.NewSelect().Model((*model.Site)(nil)).Where("status = ?", model.SiteStatusActive).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("site count active: %w", err)
 	}

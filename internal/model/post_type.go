@@ -15,7 +15,7 @@ type PostType struct {
 	Slug        string          `bun:"slug,notnull,unique" json:"slug"`
 	Description string          `bun:"description" json:"description,omitempty"`
 	Fields      json.RawMessage `bun:"fields,type:jsonb,default:'[]'" json:"fields"`
-	BuiltIn     bool            `bun:"built_in,notnull,default:false" json:"built_in"`
+	BuiltIn     Toggle          `bun:"built_in,notnull,type:smallint,default:1" json:"built_in"`
 	CreatedAt   time.Time       `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time       `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 }

@@ -89,7 +89,7 @@ func (s *Service) CreateSite(ctx context.Context, req *CreateSiteReq) (*model.Si
 		Description:   req.Description,
 		DefaultLocale: locale,
 		Timezone:      tz,
-		IsActive:      true,
+		Status:        model.SiteStatusActive,
 	}
 
 	if err := s.siteRepo.Create(ctx, site); err != nil {
@@ -138,8 +138,8 @@ func (s *Service) UpdateSite(ctx context.Context, slug string, req *UpdateSiteRe
 	if req.Timezone != nil {
 		site.Timezone = *req.Timezone
 	}
-	if req.IsActive != nil {
-		site.IsActive = *req.IsActive
+	if req.Status != nil {
+		site.Status = *req.Status
 	}
 	if req.Settings != nil {
 		site.Settings = *req.Settings

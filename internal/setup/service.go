@@ -121,7 +121,7 @@ func (s *Service) Initialize(ctx context.Context, req *InitializeReq) (*Initiali
 			Email:        req.AdminEmail,
 			PasswordHash: passwordHash,
 			DisplayName:  req.AdminDisplayName,
-			IsActive:     true,
+			Status:       model.UserStatusActive,
 		}
 		if _, err := tx.NewInsert().Model(&user).Exec(ctx); err != nil {
 			return fmt.Errorf("create admin user: %w", err)
@@ -131,7 +131,7 @@ func (s *Service) Initialize(ctx context.Context, req *InitializeReq) (*Initiali
 			Slug:          req.SiteSlug,
 			Domain:        req.SiteURL,
 			DefaultLocale: locale,
-			IsActive:      true,
+			Status:        model.SiteStatusActive,
 		}
 		if _, err := tx.NewInsert().Model(&site).Exec(ctx); err != nil {
 			return fmt.Errorf("create site: %w", err)
