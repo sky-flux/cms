@@ -13,8 +13,9 @@ var (
 	ErrConflict      = errors.New("resource conflict")
 	ErrValidation    = errors.New("validation failed")
 	ErrUnprocessable = errors.New("unprocessable entity")
-	ErrRateLimited   = errors.New("rate limited")
-	ErrInternal      = errors.New("internal server error")
+	ErrRateLimited       = errors.New("rate limited")
+	ErrVersionConflict   = errors.New("version conflict")
+	ErrInternal          = errors.New("internal server error")
 )
 
 // AppError is the unified application error type.
@@ -52,6 +53,8 @@ func HTTPStatusCode(err error) int {
 		return http.StatusUnprocessableEntity
 	case errors.Is(err, ErrRateLimited):
 		return http.StatusTooManyRequests
+	case errors.Is(err, ErrVersionConflict):
+		return http.StatusConflict
 	default:
 		return http.StatusInternalServerError
 	}
@@ -77,6 +80,10 @@ func Conflict(msg string, err error) *AppError {
 
 func Validation(msg string, err error) *AppError {
 	return &AppError{Code: http.StatusUnprocessableEntity, Message: msg, Err: errors.Join(ErrValidation, err)}
+}
+
+func VersionConflict(msg string, err error) *AppError {
+	return &AppError{Code: http.StatusConflict, Message: msg, Err: errors.Join(ErrVersionConflict, err)}
 }
 
 func Internal(msg string, err error) *AppError {

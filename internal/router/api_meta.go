@@ -100,5 +100,34 @@ func BuildAPIMetaMap() map[string]rbac.APIMeta {
 		"GET:/api/v1/site/media/:id":     {Name: "Get media", Description: "Get media file details", Group: "media"},
 		"PUT:/api/v1/site/media/:id":     {Name: "Update media", Description: "Update media metadata", Group: "media"},
 		"DELETE:/api/v1/site/media/:id":  {Name: "Delete media", Description: "Soft delete media file", Group: "media"},
+
+		// Site-scoped: Posts CRUD
+		"GET:/api/v1/site/posts":        {Name: "List posts", Description: "List posts with filters", Group: "posts"},
+		"POST:/api/v1/site/posts":       {Name: "Create post", Description: "Create a new post", Group: "posts"},
+		"GET:/api/v1/site/posts/:id":    {Name: "Get post", Description: "Get post details", Group: "posts"},
+		"PUT:/api/v1/site/posts/:id":    {Name: "Update post", Description: "Update post with optimistic locking", Group: "posts"},
+		"DELETE:/api/v1/site/posts/:id": {Name: "Delete post", Description: "Soft delete a post", Group: "posts"},
+
+		// Site-scoped: Posts status
+		"POST:/api/v1/site/posts/:id/publish":         {Name: "Publish post", Description: "Publish a post", Group: "posts"},
+		"POST:/api/v1/site/posts/:id/unpublish":       {Name: "Unpublish post", Description: "Archive a published post", Group: "posts"},
+		"POST:/api/v1/site/posts/:id/revert-to-draft": {Name: "Revert to draft", Description: "Revert post to draft", Group: "posts"},
+		"POST:/api/v1/site/posts/:id/restore":         {Name: "Restore post", Description: "Restore from trash", Group: "posts"},
+
+		// Site-scoped: Posts revisions
+		"GET:/api/v1/site/posts/:id/revisions":                   {Name: "List revisions", Description: "List post revision history", Group: "posts"},
+		"POST:/api/v1/site/posts/:id/revisions/:rev_id/rollback": {Name: "Rollback revision", Description: "Rollback to a specific version", Group: "posts"},
+
+		// Site-scoped: Posts translations
+		"GET:/api/v1/site/posts/:id/translations":            {Name: "List translations", Description: "List post translations", Group: "posts"},
+		"GET:/api/v1/site/posts/:id/translations/:locale":    {Name: "Get translation", Description: "Get translation by locale", Group: "posts"},
+		"PUT:/api/v1/site/posts/:id/translations/:locale":    {Name: "Upsert translation", Description: "Create or update translation", Group: "posts"},
+		"DELETE:/api/v1/site/posts/:id/translations/:locale": {Name: "Delete translation", Description: "Delete translation by locale", Group: "posts"},
+
+		// Site-scoped: Preview tokens
+		"POST:/api/v1/site/posts/:id/preview":             {Name: "Create preview", Description: "Generate preview token", Group: "posts"},
+		"GET:/api/v1/site/posts/:id/preview":              {Name: "List previews", Description: "List active preview tokens", Group: "posts"},
+		"DELETE:/api/v1/site/posts/:id/preview":           {Name: "Revoke all previews", Description: "Revoke all preview tokens", Group: "posts"},
+		"DELETE:/api/v1/site/posts/:id/preview/:token_id": {Name: "Revoke preview", Description: "Revoke single preview token", Group: "posts"},
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/sky-flux/cms/internal/config"
 	"github.com/sky-flux/cms/internal/media"
 	"github.com/sky-flux/cms/internal/middleware"
+	"github.com/sky-flux/cms/internal/post"
 	"github.com/sky-flux/cms/internal/model"
 	pkgaudit "github.com/sky-flux/cms/internal/pkg/audit"
 	"github.com/sky-flux/cms/internal/pkg/cache"
@@ -309,6 +310,43 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	siteScoped.GET("/media/:id", mediaHandler.Get)
 	siteScoped.PUT("/media/:id", mediaHandler.Update)
 	siteScoped.DELETE("/media/:id", mediaHandler.Delete)
+
+	// Posts
+	postRepo := post.NewPostRepo(db)
+	revRepo := post.NewRevisionRepo(db)
+	transRepo := post.NewTranslationRepo(db)
+	previewRepo := post.NewPreviewRepo(db)
+	postSvc := post.NewService(postRepo, revRepo, transRepo, previewRepo, searchClient, auditSvc)
+	postHandler := post.NewHandler(postSvc)
+
+	// Post CRUD
+	siteScoped.GET("/posts", postHandler.ListPosts)
+	siteScoped.POST("/posts", postHandler.CreatePost)
+	siteScoped.GET("/posts/:id", postHandler.GetPost)
+	siteScoped.PUT("/posts/:id", postHandler.UpdatePost)
+	siteScoped.DELETE("/posts/:id", postHandler.DeletePost)
+
+	// Post status transitions
+	siteScoped.POST("/posts/:id/publish", postHandler.Publish)
+	siteScoped.POST("/posts/:id/unpublish", postHandler.Unpublish)
+	siteScoped.POST("/posts/:id/revert-to-draft", postHandler.RevertToDraft)
+	siteScoped.POST("/posts/:id/restore", postHandler.Restore)
+
+	// Post revisions
+	siteScoped.GET("/posts/:id/revisions", postHandler.ListRevisions)
+	siteScoped.POST("/posts/:id/revisions/:rev_id/rollback", postHandler.Rollback)
+
+	// Post translations
+	siteScoped.GET("/posts/:id/translations", postHandler.ListTranslations)
+	siteScoped.GET("/posts/:id/translations/:locale", postHandler.GetTranslation)
+	siteScoped.PUT("/posts/:id/translations/:locale", postHandler.UpsertTranslation)
+	siteScoped.DELETE("/posts/:id/translations/:locale", postHandler.DeleteTranslation)
+
+	// Preview tokens
+	siteScoped.POST("/posts/:id/preview", postHandler.CreatePreviewToken)
+	siteScoped.GET("/posts/:id/preview", postHandler.ListPreviewTokens)
+	siteScoped.DELETE("/posts/:id/preview", postHandler.RevokeAllPreviewTokens)
+	siteScoped.DELETE("/posts/:id/preview/:token_id", postHandler.RevokePreviewToken)
 
 	// ── API Registry — sync routes to sfc_apis ──────────────────
 	registry := rbac.NewRegistry(rbacAPIRepo)
