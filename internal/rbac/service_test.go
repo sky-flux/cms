@@ -224,3 +224,74 @@ func (c *countingUserRoleRepo) SetUserRoles(ctx context.Context, userID string, 
 func (c *countingUserRoleRepo) HasRole(ctx context.Context, userID, slug string) (bool, error) {
 	return c.inner.HasRole(ctx, userID, slug)
 }
+
+// --- Error-returning repo for edge case tests ---
+
+type erroringUserRoleRepo struct {
+	err error
+}
+
+func (e *erroringUserRoleRepo) GetRolesByUserID(_ context.Context, _ string) ([]model.Role, error) {
+	return nil, e.err
+}
+func (e *erroringUserRoleRepo) GetRoleSlugs(_ context.Context, _ string) ([]string, error) {
+	return nil, e.err
+}
+func (e *erroringUserRoleRepo) SetUserRoles(_ context.Context, _ string, _ []string) error {
+	return nil
+}
+func (e *erroringUserRoleRepo) HasRole(_ context.Context, _, _ string) (bool, error) {
+	return false, nil
+}
+
+// --- Edge case tests ---
+
+func TestService_CheckPermission_GetRoleSlugsError(t *testing.T) {
+	roleAPIRepo := &mockRoleAPIRepo{apisByRole: map[string][]model.APIEndpoint{}}
+	svc, _ := setupTestService(t, &erroringUserRoleRepo{err: assert.AnError}, roleAPIRepo, &mockMenuRepo{})
+
+	_, err := svc.CheckPermission(context.Background(), "user-err", "GET", "/api/v1/posts")
+	require.Error(t, err)
+}
+
+func TestService_CheckPermission_MultipleRoles(t *testing.T) {
+	userRoleRepo := &mockUserRoleRepo{
+		slugs: []string{"editor", "reviewer"},
+		roles: []model.Role{
+			{ID: "role-editor", Slug: "editor"},
+			{ID: "role-reviewer", Slug: "reviewer"},
+		},
+	}
+	roleAPIRepo := &mockRoleAPIRepo{
+		apisByRole: map[string][]model.APIEndpoint{
+			"role-editor":   {{Method: "GET", Path: "/api/v1/posts"}},
+			"role-reviewer": {{Method: "DELETE", Path: "/api/v1/posts/:id"}},
+		},
+	}
+
+	svc, _ := setupTestService(t, userRoleRepo, roleAPIRepo, &mockMenuRepo{})
+
+	// Editor permission
+	allowed, err := svc.CheckPermission(context.Background(), "user-multi", "GET", "/api/v1/posts")
+	require.NoError(t, err)
+	assert.True(t, allowed)
+
+	// Reviewer permission (from second role)
+	allowed, err = svc.CheckPermission(context.Background(), "user-multi", "DELETE", "/api/v1/posts/:id")
+	require.NoError(t, err)
+	assert.True(t, allowed)
+}
+
+func TestService_CheckPermission_EmptyRoles(t *testing.T) {
+	userRoleRepo := &mockUserRoleRepo{
+		slugs: []string{},
+		roles: []model.Role{},
+	}
+	roleAPIRepo := &mockRoleAPIRepo{apisByRole: map[string][]model.APIEndpoint{}}
+
+	svc, _ := setupTestService(t, userRoleRepo, roleAPIRepo, &mockMenuRepo{})
+
+	allowed, err := svc.CheckPermission(context.Background(), "user-noroles", "GET", "/api/v1/posts")
+	require.NoError(t, err)
+	assert.False(t, allowed, "user with no roles should be denied")
+}

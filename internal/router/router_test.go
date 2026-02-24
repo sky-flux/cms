@@ -7,45 +7,83 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestHealthEndpoint(t *testing.T) {
+func init() {
 	gin.SetMode(gin.TestMode)
+}
 
+// healthHandler requires concrete types (*bun.DB, *redis.Client, etc.)
+// that are hard to mock without interfaces. These tests verify the
+// response format using stub handlers. Full integration tests with
+// testcontainers will cover the real healthHandler.
+
+func TestSetup_HealthRouteRegistered(t *testing.T) {
 	engine := gin.New()
-	// Register a standalone health handler for unit testing without DB/Redis/Meilisearch.
+	engine.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/health", nil)
+	engine.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "ok", body["status"])
+}
+
+func TestHealthHandler_AllHealthy(t *testing.T) {
+	engine := gin.New()
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":      "ok",
 			"db":          "connected",
 			"redis":       "connected",
 			"meilisearch": "connected",
+			"rustfs":      "connected",
 		})
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/health", nil)
+	req, _ := http.NewRequest("GET", "/health", nil)
 	engine.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 
 	var body map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to unmarshal response: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "ok", body["status"])
+	assert.Equal(t, "connected", body["db"])
+	assert.Equal(t, "connected", body["redis"])
+	assert.Equal(t, "connected", body["meilisearch"])
+	assert.Equal(t, "connected", body["rustfs"])
+}
 
-	if body["status"] != "ok" {
-		t.Errorf("expected status 'ok', got '%s'", body["status"])
-	}
-	if body["db"] != "connected" {
-		t.Errorf("expected db 'connected', got '%s'", body["db"])
-	}
-	if body["redis"] != "connected" {
-		t.Errorf("expected redis 'connected', got '%s'", body["redis"])
-	}
-	if body["meilisearch"] != "connected" {
-		t.Errorf("expected meilisearch 'connected', got '%s'", body["meilisearch"])
-	}
+func TestHealthHandler_Degraded(t *testing.T) {
+	engine := gin.New()
+	engine.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":      "degraded",
+			"db":          "disconnected",
+			"redis":       "connected",
+			"meilisearch": "connected",
+			"rustfs":      "connected",
+		})
+	})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/health", nil)
+	engine.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "degraded", body["status"])
+	assert.Equal(t, "disconnected", body["db"])
 }

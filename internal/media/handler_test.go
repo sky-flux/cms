@@ -1,0 +1,2 @@
+package media
+// Tests will be added when business logic is implemented.

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +14,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "显示版本信息",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Sky Flux CMS %s (commit: %s, built: %s)\n", version, commit, date)
+		cmd.Printf("Sky Flux CMS %s (commit: %s, built: %s)\n", version, commit, date)
 	},
 }
 

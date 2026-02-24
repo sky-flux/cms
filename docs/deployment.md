@@ -12,7 +12,7 @@
 
 | 软件 | 最低版本 | 说明 |
 |------|----------|------|
-| Go | 1.24+ | 后端编译与运行 |
+| Go | 1.25+ | 后端编译与运行 |
 | Node.js | 20+ (LTS) | 前端构建与 SSR 运行 |
 | bun | 1.2+ | 前端包管理器与运行时 |
 | Docker | 25+ | 容器化部署 |
@@ -661,7 +661,7 @@ server {
     # CSP 统一在 Nginx 层配置，后端不重复设置（见 security.md）
     # CORS/CSP 策略详见 security.md，此处配置应与其保持一致
     # CORS 由 Gin 中间件处理（security.md §5.4），Nginx 不重复设置 CORS 头
-    # 允许的 Origins 列表维护在 config.yaml 的 cors.allowed_origins 中
+    # 允许的 Origins 列表维护在 .env 的 CORS_ALLOWED_ORIGINS 中
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "0" always;

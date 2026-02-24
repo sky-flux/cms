@@ -8,7 +8,7 @@
 
 | 工具 | 版本 | 安装 |
 |------|------|------|
-| Go | 1.24+ | https://go.dev/dl/ |
+| Go | 1.25+ | https://go.dev/dl/ |
 | bun | 1.2+ | `curl -fsSL https://bun.sh/install \| bash` |
 | Docker | 25+ | https://docs.docker.com/get-docker/ |
 | Docker Compose | 2.24+ | Docker Desktop 自带 |
@@ -42,7 +42,7 @@ make dev
 
 ## Docker Compose 服务
 
-开发环境仅需 PostgreSQL 和 Redis，Go 后端和 Astro 前端在宿主机直接运行（支持热重载）。
+开发环境需 PostgreSQL、Redis、Meilisearch 和 RustFS 四个基础设施服务，Go 后端和 Astro 前端在宿主机直接运行（支持热重载）。
 
 ### docker-compose.yml
 
@@ -99,10 +99,30 @@ services:
       timeout: 3s
       retries: 5
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: cms-rustfs
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
+    command: /data
+    volumes:
+      - rustfsdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   pgdata:
   redisdata:
   meilidata:
+  rustfsdata:
 ```
 
 ### 常用命令

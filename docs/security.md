@@ -1222,15 +1222,10 @@ func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 }
 ```
 
-```yaml
-# config.yaml
-cors:
-  allowed_origins:
-    - "https://cms.example.com"      # 管理后台
-    - "https://www.example.com"      # 前端站点
-    # 开发环境
-    - "http://localhost:3000"
-    - "http://localhost:4321"
+```bash
+# .env
+# 多个 Origin 用逗号分隔
+CORS_ALLOWED_ORIGINS=https://cms.example.com,https://www.example.com,http://localhost:3000,http://localhost:4321
 ```
 
 > **部署注意**：Nginx 层的 CORS/CSP 配置应与此处保持一致，详见 deployment.md

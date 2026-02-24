@@ -268,9 +268,11 @@ sky-flux-cms/
 │   │   └── recovery.go
 │   ├── config/                        # 配置加载（Viper）
 │   │   └── config.go
-│   ├── database/                      # DB + Redis 连接
+│   ├── database/                      # DB + Redis + Meili + RustFS 连接
 │   │   ├── postgres.go
-│   │   └── redis.go
+│   │   ├── redis.go
+│   │   ├── meilisearch.go            # Meilisearch 客户端初始化
+│   │   └── rustfs.go                 # RustFS S3 兼容客户端（AWS SDK v2）
 │   ├── schema/                        # Per-site Schema 管理
 │   │   ├── template.go                # CreateSiteSchema(ctx, tx, slug) — 完整建表模板
 │   │   ├── migrate.go                 # ForEachSiteSchema() — 批量迁移辅助
@@ -279,19 +281,24 @@ sky-flux-cms/
 │   │   └── router.go
 │   ├── cron/                          # 定时任务调度（robfig/cron）
 │   │   └── scheduler.go
+│   ├── testutil/                      # 测试工具包
+│   │   ├── containers.go             # testcontainers-go PostgreSQL 辅助
+│   │   └── httptest.go               # Gin HTTP 测试辅助
 │   └── pkg/                           # 共享工具包
 │       ├── apperror/                  # 全局错误定义
-│       ├── jwt/                       # JWT 签发/验证
-│       ├── crypto/                    # 密码哈希 / TOTP 加密 / 预览 Token 生成
-│       ├── slug/                      # Slug 生成
-│       ├── paginator/                 # 分页
-│       └── storage/                   # RustFS S3 客户端封装
+│       ├── response/                  # 统一响应格式（Success / Error / Paginated）
+│       ├── jwt/                       # JWT 签发/验证（待实现）
+│       ├── crypto/                    # 密码哈希 / TOTP 加密 / 预览 Token 生成（待实现）
+│       ├── slug/                      # Slug 生成（待实现）
+│       ├── paginator/                 # 分页（待实现）
+│       └── storage/                   # RustFS S3 客户端封装（待实现）
 │
 ├── migrations/                        # bun Go code migrations
-│   ├── 20260224000001_create_extensions.go
-│   ├── 20260224000002_create_public_schema.go
-│   ├── 20260224000003_create_site_template.go
-│   └── ...
+│   ├── main.go                        # 迁移注册表（Migrations 全局变量）
+│   ├── 20260224000001_create_core_tables.go    # 核心表（users, sites, tokens, totp, configs）
+│   ├── 20260224000002_create_rbac_tables.go    # RBAC 9 张表
+│   ├── 20260224000003_site_schema_placeholder.go  # 占位符（站点 schema 动态创建）
+│   └── 20260224000004_seed_rbac_builtins.go    # 内置角色 + 权限模板种子数据
 │
 ├── web/                               # Astro 管理后台
 │   ├── src/
@@ -372,7 +379,6 @@ sky-flux-cms/
 │   │   │   └── editorStore.ts         # 编辑器状态（自动保存、草稿）
 │   │   └── middleware.ts              # Astro SSR 路由守卫
 │   ├── astro.config.mjs
-│   ├── tailwind.config.mjs
 │   ├── tsconfig.json
 │   ├── components.json                # shadcn/ui 配置
 │   ├── package.json
@@ -552,43 +558,49 @@ func (s *CacheService) GetPostBySlug(ctx context.Context, slug string) (*model.P
 
 | 优先级 | 来源 | 说明 |
 |--------|------|------|
-| 1 | 环境变量 | 生产环境通过 Docker / K8s 注入 |
-| 2 | config.yaml | 项目根目录配置文件（按环境区分） |
-| 3 | 默认值 | 代码中 `viper.SetDefault()` 定义 |
+| 1 | CLI flag | `--port`, `--mode` 等命令行参数（通过 `viper.BindPFlag` 绑定） |
+| 2 | 环境变量 | 生产环境通过 Docker / K8s 注入 |
+| 3 | `.env` 文件 | 项目根目录 `.env` 文件（开发环境） |
+| 4 | 默认值 | 代码中 `viper.SetDefault()` 定义 |
 
-**配置文件格式**：YAML，按环境区分文件名：
-- `config.yaml` — 开发环境默认配置
-- `config.prod.yaml` — 生产环境覆盖配置
+**配置文件格式**：`.env`（Key-Value），通过 Viper 加载：
 
-```yaml
-# config.yaml 结构示例
-server:
-  port: 8080
-  read_timeout: 10s
-  write_timeout: 10s
+```bash
+# .env 结构示例（完整清单见 .env.example）
+SERVER_PORT=8080
+SERVER_MODE=debug
+FRONTEND_URL=http://localhost:3000
 
-database:
-  host: localhost
-  port: 5432
-  name: cms
-  max_open_conns: 25
-  max_idle_conns: 10
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=cms
+DB_USER=cms_user
+DB_PASSWORD=devpassword
+DB_SSLMODE=disable
+DB_MAX_OPEN_CONNS=25
+DB_MAX_IDLE_CONNS=5
+DB_CONN_MAX_LIFETIME=1h
+DB_CONN_MAX_IDLE_TIME=30m
 
-redis:
-  addr: localhost:6379
-  db: 0
-  max_retries: 3
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=devpassword
+REDIS_DB=0
 
-jwt:
-  secret: "${JWT_SECRET}"      # 生产环境通过环境变量覆盖
-  access_ttl: 15m
-  refresh_ttl: 168h            # 7 天
+JWT_SECRET=your-secret-key-min-32-chars
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=168h
 
-rustfs:
-  endpoint: http://localhost:9000
-  access_key: "${RUSTFS_ACCESS_KEY}"
-  secret_key: "${RUSTFS_SECRET_KEY}"
-  bucket: cms-media
+RUSTFS_ENDPOINT=http://localhost:9000
+RUSTFS_ACCESS_KEY=rustfsadmin
+RUSTFS_SECRET_KEY=rustfsadmin
+RUSTFS_BUCKET=cms-media
+
+MEILI_URL=http://localhost:7700
+MEILI_MASTER_KEY=devmasterkey
+
+LOG_LEVEL=debug
+LOG_FORMAT=json
 ```
 
 > 完整环境变量清单请参阅 [deployment.md — 环境变量](./deployment.md)。
