@@ -74,6 +74,13 @@ func (s *Service) Log(ctx context.Context, entry Entry) error {
 	return nil
 }
 
+// NoopLogger is a no-op implementation of Logger for use in tests.
+type NoopLogger struct{}
+
+func NewNoopLogger() *NoopLogger { return &NoopLogger{} }
+
+func (n *NoopLogger) Log(_ context.Context, _ Entry) error { return nil }
+
 // ctxValue extracts a string value from context. Returns "" if the key is
 // missing or the value is not a string.
 func ctxValue(ctx context.Context, key string) string {

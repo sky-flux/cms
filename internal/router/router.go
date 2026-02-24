@@ -15,17 +15,24 @@ import (
 	"github.com/sky-flux/cms/internal/apikey"
 	"github.com/sky-flux/cms/internal/audit"
 	"github.com/sky-flux/cms/internal/auth"
+	"github.com/sky-flux/cms/internal/category"
 	"github.com/sky-flux/cms/internal/config"
+	"github.com/sky-flux/cms/internal/media"
 	"github.com/sky-flux/cms/internal/middleware"
 	"github.com/sky-flux/cms/internal/model"
 	pkgaudit "github.com/sky-flux/cms/internal/pkg/audit"
+	"github.com/sky-flux/cms/internal/pkg/cache"
+	"github.com/sky-flux/cms/internal/pkg/imaging"
 	"github.com/sky-flux/cms/internal/pkg/jwt"
 	"github.com/sky-flux/cms/internal/pkg/mail"
+	"github.com/sky-flux/cms/internal/pkg/search"
+	"github.com/sky-flux/cms/internal/pkg/storage"
 	"github.com/sky-flux/cms/internal/posttype"
 	"github.com/sky-flux/cms/internal/rbac"
 	"github.com/sky-flux/cms/internal/setup"
 	"github.com/sky-flux/cms/internal/site"
 	"github.com/sky-flux/cms/internal/system"
+	"github.com/sky-flux/cms/internal/tag"
 	"github.com/sky-flux/cms/internal/user"
 )
 
@@ -263,6 +270,45 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	auditRepo := audit.NewAuditRepo(db)
 	auditHandler := audit.NewHandler(auditRepo)
 	siteScoped.GET("/audit-logs", auditHandler.ListAuditLogs)
+
+	// ── Shared infrastructure clients ───────────────────────────
+	cacheClient := cache.NewClient(rdb)
+	searchClient := search.NewClient(meili)
+	storageClient := storage.NewClient(s3Client, cfg.RustFS.Bucket, cfg.RustFS.Endpoint+"/"+cfg.RustFS.Bucket)
+	imgProcessor := imaging.NewProcessor()
+
+	// Categories
+	catRepo := category.NewRepo(db)
+	catSvc := category.NewService(catRepo, cacheClient, auditSvc)
+	catHandler := category.NewHandler(catSvc)
+	siteScoped.GET("/categories", catHandler.List)
+	siteScoped.PUT("/categories/reorder", catHandler.Reorder)
+	siteScoped.GET("/categories/:id", catHandler.Get)
+	siteScoped.POST("/categories", catHandler.Create)
+	siteScoped.PUT("/categories/:id", catHandler.Update)
+	siteScoped.DELETE("/categories/:id", catHandler.Delete)
+
+	// Tags
+	tagRepo := tag.NewRepo(db)
+	tagSvc := tag.NewService(tagRepo, searchClient, cacheClient, auditSvc)
+	tagHandler := tag.NewHandler(tagSvc)
+	siteScoped.GET("/tags", tagHandler.List)
+	siteScoped.GET("/tags/suggest", tagHandler.Suggest)
+	siteScoped.GET("/tags/:id", tagHandler.Get)
+	siteScoped.POST("/tags", tagHandler.Create)
+	siteScoped.PUT("/tags/:id", tagHandler.Update)
+	siteScoped.DELETE("/tags/:id", tagHandler.Delete)
+
+	// Media
+	mediaRepo := media.NewRepo(db)
+	mediaSvc := media.NewService(mediaRepo, storageClient, imgProcessor, auditSvc)
+	mediaHandler := media.NewHandler(mediaSvc)
+	siteScoped.GET("/media", mediaHandler.List)
+	siteScoped.DELETE("/media/batch", mediaHandler.BatchDelete)
+	siteScoped.POST("/media", mediaHandler.Upload)
+	siteScoped.GET("/media/:id", mediaHandler.Get)
+	siteScoped.PUT("/media/:id", mediaHandler.Update)
+	siteScoped.DELETE("/media/:id", mediaHandler.Delete)
 
 	// ── API Registry — sync routes to sfc_apis ──────────────────
 	registry := rbac.NewRegistry(rbacAPIRepo)

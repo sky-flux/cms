@@ -76,5 +76,29 @@ func BuildAPIMetaMap() map[string]rbac.APIMeta {
 
 		// Site-scoped: Audit Logs
 		"GET:/api/v1/site/audit-logs": {Name: "List audit logs", Description: "Query audit trail", Group: "audit"},
+
+		// Site-scoped: Categories
+		"GET:/api/v1/site/categories":         {Name: "List categories", Description: "List category tree", Group: "categories"},
+		"PUT:/api/v1/site/categories/reorder": {Name: "Reorder categories", Description: "Batch update sort order", Group: "categories"},
+		"GET:/api/v1/site/categories/:id":     {Name: "Get category", Description: "Get category details", Group: "categories"},
+		"POST:/api/v1/site/categories":        {Name: "Create category", Description: "Create a category", Group: "categories"},
+		"PUT:/api/v1/site/categories/:id":     {Name: "Update category", Description: "Update a category", Group: "categories"},
+		"DELETE:/api/v1/site/categories/:id":  {Name: "Delete category", Description: "Delete a leaf category", Group: "categories"},
+
+		// Site-scoped: Tags
+		"GET:/api/v1/site/tags":         {Name: "List tags", Description: "List tags with pagination", Group: "tags"},
+		"GET:/api/v1/site/tags/suggest": {Name: "Suggest tags", Description: "Tag autocomplete via Meilisearch", Group: "tags"},
+		"GET:/api/v1/site/tags/:id":     {Name: "Get tag", Description: "Get tag details", Group: "tags"},
+		"POST:/api/v1/site/tags":        {Name: "Create tag", Description: "Create a tag", Group: "tags"},
+		"PUT:/api/v1/site/tags/:id":     {Name: "Update tag", Description: "Update a tag", Group: "tags"},
+		"DELETE:/api/v1/site/tags/:id":  {Name: "Delete tag", Description: "Delete a tag", Group: "tags"},
+
+		// Site-scoped: Media
+		"GET:/api/v1/site/media":         {Name: "List media", Description: "List media files", Group: "media"},
+		"DELETE:/api/v1/site/media/batch": {Name: "Batch delete media", Description: "Batch delete media files", Group: "media"},
+		"POST:/api/v1/site/media":        {Name: "Upload media", Description: "Upload a media file", Group: "media"},
+		"GET:/api/v1/site/media/:id":     {Name: "Get media", Description: "Get media file details", Group: "media"},
+		"PUT:/api/v1/site/media/:id":     {Name: "Update media", Description: "Update media metadata", Group: "media"},
+		"DELETE:/api/v1/site/media/:id":  {Name: "Delete media", Description: "Soft delete media file", Group: "media"},
 	}
 }
