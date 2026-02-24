@@ -7,7 +7,7 @@
 ## 技术栈
 
 ```
-后端: Go 1.25+ / Gin v1.11+ / uptrace/bun (ORM) / PostgreSQL 18 / Redis 8 / Meilisearch / RustFS
+后端: Go 1.25+ / Gin v1.11+ / uptrace/bun (ORM) / PostgreSQL 18 / Redis 8 / Meilisearch / RustFS / Resend
 前端: Astro 5 SSR + React 19 + shadcn/ui + TanStack Query v5 + Zustand + Tailwind V4
 认证: JWT HS256 (15min) + Refresh Token (7d httpOnly Cookie) + TOTP 2FA
 日志: log/slog (Go 标准库)
@@ -36,10 +36,11 @@ Bun 1.2+    | Docker Compose 2+  | Redis 8 / Meilisearch / RustFS
 | 搜索引擎 | **Meilisearch** (独立全文搜索) | PostgreSQL FTS, Elasticsearch |
 | 对象存储 | **RustFS** (S3 兼容, AWS SDK v2) | 本地文件系统, MinIO |
 | CLI 框架 | **Cobra** + Viper | 裸 flag 包, urfave/cli |
+| 邮件服务 | **Resend** (HTTP API, Go SDK v3) | SMTP, SendGrid, SES |
 
 ## 多站点架构
 
-- `public` schema: sfc_users, sfc_sites, sfc_roles, sfc_user_roles, sfc_apis, sfc_role_apis, sfc_menus（后台管理菜单）, sfc_role_menus, sfc_role_templates, sfc_role_template_apis, sfc_role_template_menus, sfc_refresh_tokens, sfc_user_totp, sfc_configs（`sfc_` 前缀标识 Sky Flux CMS 专属表）
+- `public` schema: sfc_users, sfc_sites, sfc_roles, sfc_user_roles, sfc_apis, sfc_role_apis, sfc_menus（后台管理菜单）, sfc_role_menus, sfc_role_templates, sfc_role_template_apis, sfc_role_template_menus, sfc_refresh_tokens, sfc_password_reset_tokens, sfc_user_totp, sfc_configs（`sfc_` 前缀标识 Sky Flux CMS 专属表）
 - `site_{slug}` schema: sfc_site_posts, sfc_site_categories, sfc_site_tags, sfc_site_media_files, sfc_site_comments, sfc_site_menus, sfc_site_redirects, sfc_site_preview_tokens, sfc_site_api_keys, sfc_site_audits, sfc_site_configs
 - 中间件链: InstallationGuard → SiteResolver → SchemaMiddleware (`SET search_path TO 'site_{slug}', 'public'`) → Auth → RBAC
 - 内容表无 `site_id` 列 — Schema 本身即隔离边界

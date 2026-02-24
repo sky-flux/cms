@@ -1,0 +1,18 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/cms serve"
+  cmd = "go build -o ./tmp/cms ./cmd/cms"
+  delay = 1000
+  exclude_dir = ["tmp", "vendor", "web", "node_modules", "docs", "migrations", ".git"]
+  exclude_regex = ["_test\\.go$"]
+  include_ext = ["go", "toml"]
+  kill_delay = "0s"
+  send_interrupt = true
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true

@@ -504,8 +504,8 @@ Then  返回英文版本内容
 - `GET /api/v1/sites/:slug` — 获取站点详情
 - `PUT /api/v1/sites/:slug` — 更新站点
 - `DELETE /api/v1/sites/:slug` — 删除站点
-- `POST /api/v1/sites/:slug/roles` — 为用户分配站点角色
-- `DELETE /api/v1/sites/:slug/roles/:user_id` — 移除用户站点角色
+- `PUT /api/v1/sites/:slug/users/:user_id/role` — 分配用户站点角色
+- `DELETE /api/v1/sites/:slug/users/:user_id/role` — 移除用户站点角色
 
 ---
 

@@ -38,6 +38,7 @@ Request
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
+| GET | /health | 无 | 健康检查 |
 | POST | /api/v1/setup/check | 无 | 检查安装状态 |
 | POST | /api/v1/setup/initialize | 无 | 初始化系统 |
 | POST | /api/v1/auth/login | 无 | 用户登录（含 2FA 流程） |
@@ -126,6 +127,7 @@ Request
 | DELETE | /api/v1/categories/:id | Admin+ | 删除分类 |
 | PUT | /api/v1/categories/reorder | Admin+ | 批量排序 |
 | GET | /api/v1/tags | Viewer+ | 标签列表 |
+| GET | /api/v1/tags/:id | Viewer+ | 标签详情 |
 | GET | /api/v1/tags/suggest | Viewer+ | 标签自动补全 |
 | POST | /api/v1/tags | Editor+ | 创建标签 |
 | PUT | /api/v1/tags/:id | Editor+ | 更新标签 |
@@ -133,6 +135,9 @@ Request
 | POST | /api/v1/media | Editor+ | 上传媒体 |
 | GET | /api/v1/media | Viewer+ | 媒体列表 |
 | DELETE | /api/v1/media/:id | Editor+ | 删除媒体 |
+| GET | /api/v1/media/:id | Viewer+ | 媒体详情 |
+| PUT | /api/v1/media/:id | Editor+ | 更新媒体元数据 |
+| DELETE | /api/v1/media/batch | Admin+ | 批量删除媒体 |
 | GET | /api/v1/api-keys | Admin+ | API Key 列表 |
 | POST | /api/v1/api-keys | Admin+ | 创建 API Key |
 | DELETE | /api/v1/api-keys/:id | Admin+ | 吊销 API Key |
@@ -153,7 +158,7 @@ Request
 | PUT | /api/v1/comments/:id/status | Editor+ | 更新评论状态 |
 | PUT | /api/v1/comments/:id/pin | Editor+ | 切换置顶 |
 | POST | /api/v1/comments/:id/reply | Editor+ | 管理员回复 |
-| PUT | /api/v1/comments/batch-status | Editor+ | 批量更新状态 |
+| PUT | /api/v1/comments/batch-status | Admin+ | 批量更新状态 |
 | DELETE | /api/v1/comments/:id | Admin+ | 永久删除评论 |
 | GET | /api/v1/menus | Admin+ | 菜单列表 |
 | POST | /api/v1/menus | Admin+ | 创建菜单 |
@@ -2009,6 +2014,28 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
+### GET /api/v1/tags/:id
+**描述**：获取标签详情（Viewer+）
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Go",
+    "slug": "go",
+    "post_count": 15,
+    "created_at": "2026-01-10T08:00:00Z",
+    "updated_at": "2026-01-15T12:00:00Z"
+  }
+}
+```
+
+**Error 404**：TAG_NOT_FOUND
+
+---
+
 ### POST /api/v1/tags
 **描述**：创建标签（Editor+）
 
@@ -2186,6 +2213,128 @@ alt_text: 图片描述（可选）
 ```
 
 > `?force=true` 需要 Admin 或 Super 角色，即使媒体有引用也执行删除操作。
+
+---
+
+### GET /api/v1/media/:id
+**描述**：获取单个媒体文件详情（含引用计数和引用文章列表）（Viewer+）
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "file_name": "banner-2026.webp",
+    "original_name": "banner.png",
+    "mime_type": "image/webp",
+    "media_type": "image",
+    "file_size": 45678,
+    "width": 1920,
+    "height": 1080,
+    "alt_text": "首页横幅图片",
+    "title": "2026 首页横幅",
+    "public_url": "https://cdn.example.com/media/banner-2026.webp",
+    "webp_url": "https://cdn.example.com/media/banner-2026.webp",
+    "thumbnail_urls": {
+      "sm": "https://cdn.example.com/media/thumbs/sm_banner-2026.webp",
+      "md": "https://cdn.example.com/media/thumbs/md_banner-2026.webp"
+    },
+    "reference_count": 3,
+    "referencing_posts": [
+      { "id": "550e8400-...", "title": "Go 性能优化实践" },
+      { "id": "660f9500-...", "title": "Gin 框架入门" },
+      { "id": "770a0600-...", "title": "PostgreSQL 调优指南" }
+    ],
+    "created_at": "2026-02-15T08:00:00Z",
+    "updated_at": "2026-02-20T12:00:00Z"
+  }
+}
+```
+
+**Error 404**：MEDIA_NOT_FOUND
+
+---
+
+### PUT /api/v1/media/:id
+**描述**：更新媒体文件元数据（Editor+）
+
+**Request Body**
+```json
+{
+  "alt_text": "更新后的图片描述",
+  "title": "更新后的标题"
+}
+```
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "file_name": "banner-2026.webp",
+    "original_name": "banner.png",
+    "mime_type": "image/webp",
+    "media_type": "image",
+    "file_size": 45678,
+    "width": 1920,
+    "height": 1080,
+    "alt_text": "更新后的图片描述",
+    "title": "更新后的标题",
+    "public_url": "https://cdn.example.com/media/banner-2026.webp",
+    "webp_url": "https://cdn.example.com/media/banner-2026.webp",
+    "thumbnail_urls": {
+      "sm": "https://cdn.example.com/media/thumbs/sm_banner-2026.webp",
+      "md": "https://cdn.example.com/media/thumbs/md_banner-2026.webp"
+    },
+    "reference_count": 3,
+    "created_at": "2026-02-15T08:00:00Z",
+    "updated_at": "2026-02-24T10:00:00Z"
+  }
+}
+```
+
+**Error 404**：MEDIA_NOT_FOUND
+
+---
+
+### DELETE /api/v1/media/batch
+**描述**：批量删除媒体文件（Admin+）
+
+**Request Body**
+```json
+{
+  "ids": ["019503a1-...", "019503a2-...", "019503a3-..."]
+}
+```
+
+**校验**：`ids` 最多 100 条。
+
+**Query Params**
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| force | bool | 强制删除有引用的文件，需 Admin+ 权限 |
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "deleted_count": 2,
+    "skipped": [
+      {
+        "id": "019503a3-...",
+        "reason": "媒体文件正在被引用",
+        "reference_count": 3
+      }
+    ]
+  }
+}
+```
+
+> 使用 `?force=true` 时忽略引用检查，所有指定文件将被强制删除。
 
 ---
 

@@ -1,0 +1,34 @@
+# 开发环境配置 — docker compose up 时自动加载
+#
+# 端口可通过 .env 覆盖: DB_PORT / REDIS_PORT / MEILI_PORT
+# 调试: 取消注释下方选项启用详细日志
+services:
+  postgres:
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    # 取消注释以记录所有 SQL 语句（调试用）
+    # environment:
+    #   POSTGRES_LOG_STATEMENT: all
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    # 取消注释以启用 Redis 调试日志
+    # command: redis-server --requirepass ${REDIS_PASSWORD:-devpassword} --loglevel debug
+
+  meilisearch:
+    environment:
+      MEILI_ENV: development
+    ports:
+      - "${MEILI_PORT:-7700}:7700"
+    # 取消注释以启用详细搜索日志
+    # environment:
+    #   MEILI_ENV: development
+    #   MEILI_LOG_LEVEL: TRACE
+
+  rustfs:
+    ports:
+      - "${RUSTFS_PORT:-9000}:9000"
+      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    environment:
+      RUSTFS_CONSOLE_ENABLE: "true"

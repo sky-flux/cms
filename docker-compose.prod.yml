@@ -1,0 +1,46 @@
+# 生产环境 — docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# 前置条件: .env 中必须设置强密码 (DB_PASSWORD / REDIS_PASSWORD / MEILI_MASTER_KEY)
+# 基础设施端口不对外暴露，仅通过 Docker 内部网络访问
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cms-server
+    env_file: .env
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: cms-web
+    environment:
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://server:8080}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  postgres:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  meilisearch:
+    environment:
+      MEILI_ENV: production
+    restart: unless-stopped
+
+  rustfs:
+    restart: unless-stopped
