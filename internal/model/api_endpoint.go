@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -18,6 +19,12 @@ type APIEndpoint struct {
 	Status      bool      `bun:"status,notnull,default:true" json:"status"`
 	CreatedAt   time.Time `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (ae *APIEndpoint) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&ae.CreatedAt, &ae.UpdatedAt, query)
+	return nil
 }
 
 type RoleAPI struct {

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -21,6 +22,12 @@ type AdminMenu struct {
 	CreatedAt time.Time    `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt time.Time    `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 	Children  []*AdminMenu `bun:"rel:has-many,join:id=parent_id" json:"children,omitempty"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (m *AdminMenu) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&m.CreatedAt, &m.UpdatedAt, query)
+	return nil
 }
 
 type RoleMenu struct {

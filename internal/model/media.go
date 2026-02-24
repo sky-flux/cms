@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -29,4 +30,10 @@ type MediaFile struct {
 	CreatedAt      time.Time       `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt      time.Time       `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 	DeletedAt      *time.Time      `bun:"deleted_at,soft_delete,nullzero" json:"-"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (mf *MediaFile) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&mf.CreatedAt, &mf.UpdatedAt, query)
+	return nil
 }

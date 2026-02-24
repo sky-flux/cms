@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -17,4 +18,10 @@ type UserTOTP struct {
 	VerifiedAt      *time.Time `bun:"verified_at" json:"verified_at,omitempty"`
 	CreatedAt       time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt       time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (ut *UserTOTP) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&ut.CreatedAt, &ut.UpdatedAt, query)
+	return nil
 }

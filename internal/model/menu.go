@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -21,6 +22,12 @@ type SiteMenu struct {
 	Items []*SiteMenuItem `bun:"rel:has-many,join:id=menu_id" json:"items,omitempty"`
 }
 
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (sm *SiteMenu) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&sm.CreatedAt, &sm.UpdatedAt, query)
+	return nil
+}
+
 // SiteMenuItem maps to sfc_site_menu_items.
 type SiteMenuItem struct {
 	bun.BaseModel `bun:"table:sfc_site_menu_items,alias:mi"`
@@ -39,4 +46,10 @@ type SiteMenuItem struct {
 	UpdatedAt   time.Time    `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 
 	Children []*SiteMenuItem `bun:"rel:has-many,join:id=parent_id" json:"children,omitempty"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (mi *SiteMenuItem) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&mi.CreatedAt, &mi.UpdatedAt, query)
+	return nil
 }

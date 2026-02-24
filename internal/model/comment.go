@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -26,4 +27,13 @@ type Comment struct {
 	DeletedAt   *time.Time    `bun:"deleted_at,soft_delete,nullzero" json:"-"`
 
 	Children []*Comment `bun:"rel:has-many,join:id=parent_id" json:"children,omitempty"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (c *Comment) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&c.CreatedAt, &c.UpdatedAt, query)
+	if _, ok := query.(*bun.InsertQuery); ok && c.UserID == nil && c.AuthorEmail != "" {
+		NormalizeEmail(&c.AuthorEmail)
+	}
+	return nil
 }

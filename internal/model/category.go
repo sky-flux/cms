@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -22,4 +23,10 @@ type Category struct {
 	UpdatedAt   time.Time       `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 
 	Children []*Category `bun:"rel:has-many,join:id=parent_id" json:"children,omitempty"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (c *Category) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&c.CreatedAt, &c.UpdatedAt, query)
+	return nil
 }

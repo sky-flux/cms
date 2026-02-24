@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -84,4 +85,19 @@ type PostTagMap struct {
 
 	PostID string `bun:"post_id,pk,type:uuid" json:"post_id"`
 	TagID  string `bun:"tag_id,pk,type:uuid" json:"tag_id"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (p *Post) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&p.CreatedAt, &p.UpdatedAt, query)
+	if _, ok := query.(*bun.UpdateQuery); ok {
+		p.Version++
+	}
+	return nil
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (pt *PostTranslation) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&pt.CreatedAt, &pt.UpdatedAt, query)
+	return nil
 }

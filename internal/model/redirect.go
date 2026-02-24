@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -19,4 +20,10 @@ type Redirect struct {
 	CreatedBy  *string    `bun:"created_by,type:uuid" json:"created_by,omitempty"`
 	CreatedAt  time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt  time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (rd *Redirect) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&rd.CreatedAt, &rd.UpdatedAt, query)
+	return nil
 }

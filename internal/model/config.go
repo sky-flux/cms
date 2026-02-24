@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -15,4 +16,10 @@ type Config struct {
 	Description string          `bun:"description" json:"description,omitempty"`
 	UpdatedBy   *string         `bun:"updated_by,type:uuid" json:"updated_by,omitempty"`
 	UpdatedAt   time.Time       `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (c *Config) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetUpdatedAt(&c.UpdatedAt, query)
+	return nil
 }

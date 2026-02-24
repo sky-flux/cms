@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -15,6 +16,12 @@ type RoleTemplate struct {
 	BuiltIn     bool      `bun:"built_in,notnull,default:false" json:"built_in"`
 	CreatedAt   time.Time `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
+}
+
+// BeforeAppendModel implements bun.BeforeAppendModelHook.
+func (rtpl *RoleTemplate) BeforeAppendModel(ctx context.Context, query bun.Query) error {
+	SetTimestamps(&rtpl.CreatedAt, &rtpl.UpdatedAt, query)
+	return nil
 }
 
 type RoleTemplateAPI struct {
