@@ -7,8 +7,8 @@
 ## 技术栈
 
 ```
-后端: Go 1.24+ / Gin v1.11+ / uptrace/bun (ORM) / PostgreSQL 18 / Redis 8 / Meilisearch / RustFS
-前端: Astro 5 SSR + React 19 + shadcn/ui + TanStack Query v5 + Zustand
+后端: Go 1.25+ / Gin v1.11+ / uptrace/bun (ORM) / PostgreSQL 18 / Redis 8 / Meilisearch / RustFS
+前端: Astro 5 SSR + React 19 + shadcn/ui + TanStack Query v5 + Zustand + Tailwind V4
 认证: JWT HS256 (15min) + Refresh Token (7d httpOnly Cookie) + TOTP 2FA
 日志: log/slog (Go 标准库)
 测试: testify + testcontainers-go + miniredis / Vitest + RTL + Playwright / k6
@@ -17,7 +17,7 @@
 ## 开发环境要求
 
 ```
-Go 1.24+    | Docker 27+         | PostgreSQL 18
+Go 1.25+    | Docker 27+         | PostgreSQL 18
 Bun 1.2+    | Docker Compose 2+  | Redis 8 / Meilisearch / RustFS
 ```
 
@@ -78,9 +78,10 @@ db.NewDelete().Model(&post).WherePK().Exec(ctx)
 
 - Astro Islands 架构: 仅交互组件加载 React Runtime
 - 状态管理: Zustand (全局) + TanStack Query (服务端状态)
-- UI 组件: shadcn/ui (Radix UI + Tailwind CSS)
+- UI 组件: shadcn/ui (Radix UI + Tailwind CSS V4)
 - 错误提示: Sonner Toast
 - 界面语言: react-i18next (zh-CN / en)
+- 代码质量: Biome (lint + format, 替代 ESLint + Prettier)
 
 ## 目录结构
 
@@ -133,7 +134,7 @@ make dev            # 启动开发环境 (后端热重载 + 前端)
 make test           # 运行全部测试
 make migrate-up     # 执行数据库迁移 (public + 所有 site schemas)
 make migrate-down   # 回滚最近一次迁移
-make lint           # 代码检查 (golangci-lint + bun run lint)
+make lint           # 代码检查 (golangci-lint + Biome)
 
 # Cobra CLI 直接调用
 go run ./cmd/cms serve --port 9090     # 指定端口启动

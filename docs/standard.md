@@ -41,7 +41,7 @@ type IPostRepository interface { ... }  // 接口不使用 I 前缀
 
 #### fmt.Errorf + %w 包装
 
-所有错误在跨层传递时必须使用 `%w` 包装，保留错误链以便上层判断：
+为错误添加描述性上下文信息时，使用 `fmt.Errorf` + `%w`：
 
 ```go
 func (r *postRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.Post, error) {
@@ -56,6 +56,23 @@ func (r *postRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.Post, err
     return &post, nil
 }
 ```
+
+#### errors.Join 组合哨兵错误
+
+将哨兵错误与底层错误组合时，使用 `errors.Join`，使上层可通过 `errors.Is()` 同时匹配两个错误：
+
+```go
+// 在 AppError 构造函数中，将哨兵错误与原始错误组合
+func NotFound(msg string, err error) *AppError {
+    return &AppError{Code: http.StatusNotFound, Message: msg, Err: errors.Join(ErrNotFound, err)}
+}
+
+// 调用方可同时检查哨兵错误和底层错误
+errors.Is(appErr, apperror.ErrNotFound) // true
+errors.Is(appErr, sql.ErrNoRows)        // true (如果原始 err 是 sql.ErrNoRows)
+```
+
+**选择原则**：`fmt.Errorf("context: %w", err)` 用于添加描述性上下文；`errors.Join(sentinelErr, err)` 用于将哨兵错误与底层错误绑定，保留双重 `errors.Is()` 可达性。
 
 #### Sentinel Errors
 
@@ -1228,7 +1245,36 @@ import type { Post, PostFilters } from '@/types';
 import './PostList.css';
 ```
 
-### 2.7 前端测试规范
+### 2.7 代码质量工具 (Biome)
+
+项目使用 [Biome](https://biomejs.dev/) 统一 lint + format（替代 ESLint + Prettier）。
+
+#### 配置
+
+- 配置文件: `web/biome.json`
+- Scope: `src/**/*.{ts,tsx,astro}`
+- 规则集: recommended（内置最佳实践）
+
+#### 常用命令
+
+```bash
+bun run lint        # 检查 lint + format 问题
+bun run lint:fix    # 自动修复
+bun run format      # 仅格式化
+bun run typecheck   # TypeScript 类型检查 (astro check)
+```
+
+#### 规则说明
+
+| 规则 | 说明 |
+|------|------|
+| 缩进 | 2 spaces |
+| 行宽 | 100 字符 |
+| 引号 | 单引号 (`'`) |
+| 分号 | 始终添加 |
+| 导入排序 | Biome 内置 `organizeImports`（遵循 §2.6 排序约定） |
+
+### 2.8 前端测试规范
 
 #### 测试文件组织
 
@@ -1288,7 +1334,7 @@ export const server = setupServer(
 );
 ```
 
-### 2.8 集成测试：testcontainers-go
+### 2.9 集成测试：testcontainers-go
 
 ```go
 // ========== 集成测试：testcontainers-go ==========
