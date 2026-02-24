@@ -43,6 +43,15 @@ func NewHandler(
 
 // --- Role CRUD ---
 
+func (h *Handler) GetRole(c *gin.Context) {
+	role, err := h.roleRepo.GetByID(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, role)
+}
+
 func (h *Handler) ListRoles(c *gin.Context) {
 	roles, err := h.roleRepo.List(c.Request.Context())
 	if err != nil {
@@ -198,6 +207,84 @@ func (h *Handler) SetRoleMenus(c *gin.Context) {
 	response.NoContent(c)
 }
 
+// --- Menu CRUD ---
+
+func (h *Handler) ListMenus(c *gin.Context) {
+	menus, err := h.menuRepo.ListTree(c.Request.Context())
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, menus)
+}
+
+func (h *Handler) CreateMenu(c *gin.Context) {
+	var req CreateMenuReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperror.Validation("invalid request", err))
+		return
+	}
+
+	menu := &model.AdminMenu{
+		ParentID:  req.ParentID,
+		Name:      req.Name,
+		Icon:      req.Icon,
+		Path:      req.Path,
+		SortOrder: req.SortOrder,
+	}
+
+	if err := h.menuRepo.Create(c.Request.Context(), menu); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Created(c, menu)
+}
+
+func (h *Handler) UpdateMenu(c *gin.Context) {
+	ctx := c.Request.Context()
+	id := c.Param("id")
+
+	var req UpdateMenuReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperror.Validation("invalid request", err))
+		return
+	}
+
+	menu := &model.AdminMenu{ID: id}
+	if req.Name != "" {
+		menu.Name = req.Name
+	}
+	if req.Icon != nil {
+		menu.Icon = *req.Icon
+	}
+	if req.Path != nil {
+		menu.Path = *req.Path
+	}
+	if req.SortOrder != nil {
+		menu.SortOrder = *req.SortOrder
+	}
+	if req.Status != nil {
+		menu.Status = *req.Status
+	}
+	if req.ParentID != nil {
+		menu.ParentID = req.ParentID
+	}
+
+	if err := h.menuRepo.Update(ctx, menu); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, menu)
+}
+
+func (h *Handler) DeleteMenu(c *gin.Context) {
+	if err := h.menuRepo.Delete(c.Request.Context(), c.Param("id")); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.NoContent(c)
+}
+
 // --- Templates ---
 
 func (h *Handler) ListTemplates(c *gin.Context) {
@@ -207,6 +294,15 @@ func (h *Handler) ListTemplates(c *gin.Context) {
 		return
 	}
 	response.Success(c, templates)
+}
+
+func (h *Handler) GetTemplate(c *gin.Context) {
+	tmpl, err := h.templateRepo.GetByID(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, tmpl)
 }
 
 func (h *Handler) CreateTemplate(c *gin.Context) {
@@ -282,24 +378,42 @@ func (h *Handler) DeleteTemplate(c *gin.Context) {
 
 // --- Apply Template to Role ---
 
-// TODO(human): implement ApplyTemplate handler
 func (h *Handler) ApplyTemplate(c *gin.Context) {
-	// ApplyTemplate clones a template's API + menu permissions to a role.
-	// Steps:
-	//   1. Parse ApplyTemplateReq (contains template_id)
-	//   2. Verify the role exists (c.Param("id"))
-	//   3. Verify the template exists (req.TemplateID)
-	//   4. Call h.roleAPIRepo.CloneFromTemplate(ctx, roleID, templateID)
-	//   5. Invalidate role cache: h.svc.InvalidateRoleCache(ctx, roleID)
-	//   6. Return 204 NoContent on success
-	//
-	// Error cases:
-	//   - Role not found → apperror.NotFound
-	//   - Template not found → apperror.NotFound
-	//   - Super role → apperror.Forbidden (cannot modify super's permissions)
-	//   - Clone error → response.Error
+	roleID := c.Param("id")
+	ctx := c.Request.Context()
 
-	response.Error(c, apperror.Internal("not implemented", nil))
+	role, err := h.roleRepo.GetByID(ctx, roleID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if role.BuiltIn && role.Slug == "super" {
+		response.Error(c, apperror.Forbidden("cannot modify super role permissions", nil))
+		return
+	}
+
+	var req ApplyTemplateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperror.Validation("invalid request", err))
+		return
+	}
+
+	if _, err := h.templateRepo.GetByID(ctx, req.TemplateID); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if err := h.roleAPIRepo.CloneFromTemplate(ctx, roleID, req.TemplateID); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if err := h.svc.InvalidateRoleCache(ctx, roleID); err != nil {
+		slog.Error("invalidate role cache after template apply", "error", err, "role_id", roleID)
+	}
+
+	response.NoContent(c)
 }
 
 // --- User Roles ---

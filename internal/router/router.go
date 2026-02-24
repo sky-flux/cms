@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/sky-flux/cms/internal/pkg/jwt"
 	"github.com/sky-flux/cms/internal/rbac"
 	"github.com/sky-flux/cms/internal/setup"
+	"github.com/sky-flux/cms/internal/site"
 )
 
 func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.ServiceManager, s3Client *s3.Client, cfg *config.Config) {
@@ -62,7 +64,19 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	rbacUserRoleRepo := rbac.NewUserRoleRepo(db)
 	rbacRoleAPIRepo := rbac.NewRoleAPIRepo(db)
 	rbacMenuRepo := rbac.NewMenuRepo(db)
+	rbacRoleRepo := rbac.NewRoleRepo(db)
+	rbacAPIRepo := rbac.NewAPIRepo(db)
+	rbacTemplateRepo := rbac.NewTemplateRepo(db)
 	rbacSvc := rbac.NewService(rbacUserRoleRepo, rbacRoleAPIRepo, rbacMenuRepo, rdb)
+	rbacHandler := rbac.NewHandler(rbacSvc, rbacRoleRepo, rbacAPIRepo, rbacRoleAPIRepo, rbacMenuRepo, rbacTemplateRepo, rbacUserRoleRepo)
+
+	// ── Site module (repos → service → handler) ──────────────────
+	siteRepo := site.NewSiteRepo(db)
+	siteUserRoleRepo := site.NewUserRoleRepo(db)
+	siteRoleResolver := site.NewRoleResolver(db)
+	siteSchemaMgr := site.NewSchemaManager(db)
+	siteSvc := site.NewService(siteRepo, siteUserRoleRepo, siteRoleResolver, rbacSvc, siteSchemaMgr)
+	siteHandler := site.NewHandler(siteSvc)
 
 	// ── API v1 routes ────────────────────────────────────────────
 	v1 := engine.Group("/api/v1")
@@ -97,6 +111,62 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	authAdmin.Use(middleware.Auth(jwtMgr))
 	authAdmin.Use(middleware.RBAC(rbacSvc))
 	authAdmin.DELETE("/2fa/users/:user_id", authHandler.ForceDisable2FA)
+
+	// Sites management (JWT + RBAC)
+	sites := v1.Group("/sites")
+	sites.Use(middleware.Auth(jwtMgr))
+	sites.Use(middleware.RBAC(rbacSvc))
+	sites.GET("", siteHandler.ListSites)
+	sites.POST("", siteHandler.CreateSite)
+	sites.GET("/:slug", siteHandler.GetSite)
+	sites.PUT("/:slug", siteHandler.UpdateSite)
+	sites.DELETE("/:slug", siteHandler.DeleteSite)
+	sites.GET("/:slug/users", siteHandler.ListSiteUsers)
+	sites.PUT("/:slug/users/:user_id/role", siteHandler.AssignSiteRole)
+	sites.DELETE("/:slug/users/:user_id/role", siteHandler.RemoveSiteRole)
+
+	// RBAC management (JWT + RBAC)
+	rbacGroup := v1.Group("/rbac")
+	rbacGroup.Use(middleware.Auth(jwtMgr))
+	rbacGroup.Use(middleware.RBAC(rbacSvc))
+	rbacGroup.GET("/roles", rbacHandler.ListRoles)
+	rbacGroup.POST("/roles", rbacHandler.CreateRole)
+	rbacGroup.GET("/roles/:id", rbacHandler.GetRole)
+	rbacGroup.PUT("/roles/:id", rbacHandler.UpdateRole)
+	rbacGroup.DELETE("/roles/:id", rbacHandler.DeleteRole)
+	rbacGroup.GET("/roles/:id/apis", rbacHandler.GetRoleAPIs)
+	rbacGroup.PUT("/roles/:id/apis", rbacHandler.SetRoleAPIs)
+	rbacGroup.GET("/roles/:id/menus", rbacHandler.GetRoleMenus)
+	rbacGroup.PUT("/roles/:id/menus", rbacHandler.SetRoleMenus)
+	rbacGroup.POST("/roles/:id/apply-template", rbacHandler.ApplyTemplate)
+	rbacGroup.GET("/users/:id/roles", rbacHandler.GetUserRoles)
+	rbacGroup.POST("/users/:id/roles", rbacHandler.SetUserRoles)
+	rbacGroup.GET("/menus", rbacHandler.ListMenus)
+	rbacGroup.POST("/menus", rbacHandler.CreateMenu)
+	rbacGroup.PUT("/menus/:id", rbacHandler.UpdateMenu)
+	rbacGroup.DELETE("/menus/:id", rbacHandler.DeleteMenu)
+	rbacGroup.GET("/apis", rbacHandler.ListAPIs)
+	rbacGroup.GET("/templates", rbacHandler.ListTemplates)
+	rbacGroup.POST("/templates", rbacHandler.CreateTemplate)
+	rbacGroup.GET("/templates/:id", rbacHandler.GetTemplate)
+	rbacGroup.PUT("/templates/:id", rbacHandler.UpdateTemplate)
+	rbacGroup.DELETE("/templates/:id", rbacHandler.DeleteTemplate)
+
+	// My menus (JWT only — every authenticated user can see their own menus)
+	rbacMe := v1.Group("/rbac")
+	rbacMe.Use(middleware.Auth(jwtMgr))
+	rbacMe.GET("/me/menus", rbacHandler.GetMyMenus)
+
+	// ── API Registry — sync routes to sfc_apis ──────────────────
+	registry := rbac.NewRegistry(rbacAPIRepo)
+	metaMap := BuildAPIMetaMap()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := registry.SyncRoutes(ctx, engine, metaMap); err != nil {
+			slog.Error("api registry sync failed", "error", err)
+		}
+	}()
 }
 
 func healthHandler(db *bun.DB, rdb *redis.Client, meili meilisearch.ServiceManager, s3Client *s3.Client) gin.HandlerFunc {

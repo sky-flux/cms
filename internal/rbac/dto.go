@@ -52,6 +52,25 @@ type SetTemplateMenusReq struct {
 	MenuIDs []string `json:"menu_ids" binding:"required"`
 }
 
+// --- Menu ---
+
+type CreateMenuReq struct {
+	ParentID  *string `json:"parent_id"`
+	Name      string  `json:"name" binding:"required,max=50"`
+	Icon      string  `json:"icon"`
+	Path      string  `json:"path"`
+	SortOrder int     `json:"sort_order"`
+}
+
+type UpdateMenuReq struct {
+	ParentID  *string `json:"parent_id"`
+	Name      string  `json:"name" binding:"omitempty,max=50"`
+	Icon      *string `json:"icon"`
+	Path      *string `json:"path"`
+	SortOrder *int    `json:"sort_order"`
+	Status    *bool   `json:"status"`
+}
+
 // --- Apply Template ---
 
 type ApplyTemplateReq struct {

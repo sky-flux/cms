@@ -63,9 +63,10 @@ func (m *handlerMockAPIRepo) GetByMethodPath(_ context.Context, _, _ string) (*m
 }
 
 type handlerMockRoleAPIRepo struct {
-	apis   []model.APIEndpoint
-	err    error
-	setErr error
+	apis     []model.APIEndpoint
+	err      error
+	setErr   error
+	cloneErr error
 }
 
 func (m *handlerMockRoleAPIRepo) GetAPIsByRoleID(_ context.Context, _ string) ([]model.APIEndpoint, error) {
@@ -77,18 +78,27 @@ func (m *handlerMockRoleAPIRepo) SetRoleAPIs(_ context.Context, _ string, _ []st
 func (m *handlerMockRoleAPIRepo) GetRoleIDsByMethodPath(_ context.Context, _, _ string) ([]string, error) {
 	return nil, nil
 }
-func (m *handlerMockRoleAPIRepo) CloneFromTemplate(_ context.Context, _, _ string) error { return nil }
-
-type handlerMockMenuRepo struct {
-	menus  []model.AdminMenu
-	err    error
-	setErr error
+func (m *handlerMockRoleAPIRepo) CloneFromTemplate(_ context.Context, _, _ string) error {
+	return m.cloneErr
 }
 
-func (m *handlerMockMenuRepo) ListTree(_ context.Context) ([]model.AdminMenu, error) { return nil, nil }
-func (m *handlerMockMenuRepo) Create(_ context.Context, _ *model.AdminMenu) error     { return nil }
-func (m *handlerMockMenuRepo) Update(_ context.Context, _ *model.AdminMenu) error     { return nil }
-func (m *handlerMockMenuRepo) Delete(_ context.Context, _ string) error                { return nil }
+type handlerMockMenuRepo struct {
+	menus      []model.AdminMenu
+	err        error
+	setErr     error
+	listTree   []model.AdminMenu
+	listTreeErr error
+	createErr  error
+	updateErr  error
+	deleteErr  error
+}
+
+func (m *handlerMockMenuRepo) ListTree(_ context.Context) ([]model.AdminMenu, error) {
+	return m.listTree, m.listTreeErr
+}
+func (m *handlerMockMenuRepo) Create(_ context.Context, _ *model.AdminMenu) error { return m.createErr }
+func (m *handlerMockMenuRepo) Update(_ context.Context, _ *model.AdminMenu) error { return m.updateErr }
+func (m *handlerMockMenuRepo) Delete(_ context.Context, _ string) error           { return m.deleteErr }
 func (m *handlerMockMenuRepo) GetMenusByRoleID(_ context.Context, _ string) ([]model.AdminMenu, error) {
 	return m.menus, m.err
 }
@@ -315,4 +325,127 @@ func TestHandler_ListAPIs_Success(t *testing.T) {
 	w := doJSON(r, "GET", "/apis", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+// --- New method tests ---
+
+func TestHandler_GetRole_Success(t *testing.T) {
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "1", Name: "Admin", Slug: "admin"}}
+	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
+
+	r := gin.New()
+	r.GET("/roles/:id", h.GetRole)
+	w := doJSON(r, "GET", "/roles/1", "")
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_GetRole_NotFound(t *testing.T) {
+	roleRepo := &handlerMockRoleRepo{byIDErr: apperror.NotFound("role not found", nil)}
+	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
+
+	r := gin.New()
+	r.GET("/roles/:id", h.GetRole)
+	w := doJSON(r, "GET", "/roles/999", "")
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestHandler_GetTemplate_Success(t *testing.T) {
+	tmplRepo := &handlerMockTemplateRepo{byID: &model.RoleTemplate{ID: "t1", Name: "Editor Template"}}
+	h := setupHandlerTest(t, nil, nil, nil, nil, tmplRepo)
+
+	r := gin.New()
+	r.GET("/templates/:id", h.GetTemplate)
+	w := doJSON(r, "GET", "/templates/t1", "")
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_GetTemplate_NotFound(t *testing.T) {
+	tmplRepo := &handlerMockTemplateRepo{byIDErr: apperror.NotFound("template not found", nil)}
+	h := setupHandlerTest(t, nil, nil, nil, nil, tmplRepo)
+
+	r := gin.New()
+	r.GET("/templates/:id", h.GetTemplate)
+	w := doJSON(r, "GET", "/templates/999", "")
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestHandler_ApplyTemplate_Success(t *testing.T) {
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "r1", Slug: "editor", BuiltIn: false}}
+	tmplRepo := &handlerMockTemplateRepo{byID: &model.RoleTemplate{ID: "t1"}}
+	h := setupHandlerTest(t, roleRepo, nil, &handlerMockRoleAPIRepo{}, nil, tmplRepo)
+
+	r := gin.New()
+	r.POST("/roles/:id/apply-template", h.ApplyTemplate)
+	w := doJSON(r, "POST", "/roles/r1/apply-template", `{"template_id":"00000000-0000-0000-0000-000000000001"}`)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}
+
+func TestHandler_ApplyTemplate_SuperProtected(t *testing.T) {
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "r1", Slug: "super", BuiltIn: true}}
+	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
+
+	r := gin.New()
+	r.POST("/roles/:id/apply-template", h.ApplyTemplate)
+	w := doJSON(r, "POST", "/roles/r1/apply-template", `{"template_id":"00000000-0000-0000-0000-000000000001"}`)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestHandler_ApplyTemplate_RoleNotFound(t *testing.T) {
+	roleRepo := &handlerMockRoleRepo{byIDErr: apperror.NotFound("role not found", nil)}
+	h := setupHandlerTest(t, roleRepo, nil, nil, nil, nil)
+
+	r := gin.New()
+	r.POST("/roles/:id/apply-template", h.ApplyTemplate)
+	w := doJSON(r, "POST", "/roles/999/apply-template", `{"template_id":"00000000-0000-0000-0000-000000000001"}`)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestHandler_ApplyTemplate_TemplateNotFound(t *testing.T) {
+	roleRepo := &handlerMockRoleRepo{byID: &model.Role{ID: "r1", Slug: "editor"}}
+	tmplRepo := &handlerMockTemplateRepo{byIDErr: apperror.NotFound("template not found", nil)}
+	h := setupHandlerTest(t, roleRepo, nil, nil, nil, tmplRepo)
+
+	r := gin.New()
+	r.POST("/roles/:id/apply-template", h.ApplyTemplate)
+	w := doJSON(r, "POST", "/roles/r1/apply-template", `{"template_id":"00000000-0000-0000-0000-000000000001"}`)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestHandler_ListMenus_Success(t *testing.T) {
+	menuRepo := &handlerMockMenuRepo{listTree: []model.AdminMenu{{ID: "m1", Name: "Dashboard"}}}
+	h := setupHandlerTest(t, nil, nil, nil, menuRepo, nil)
+
+	r := gin.New()
+	r.GET("/menus", h.ListMenus)
+	w := doJSON(r, "GET", "/menus", "")
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_CreateMenu_Success(t *testing.T) {
+	h := setupHandlerTest(t, nil, nil, nil, &handlerMockMenuRepo{}, nil)
+
+	r := gin.New()
+	r.POST("/menus", h.CreateMenu)
+	w := doJSON(r, "POST", "/menus", `{"name":"Reports","path":"/reports"}`)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+}
+
+func TestHandler_DeleteMenu_Success(t *testing.T) {
+	h := setupHandlerTest(t, nil, nil, nil, &handlerMockMenuRepo{}, nil)
+
+	r := gin.New()
+	r.DELETE("/menus/:id", h.DeleteMenu)
+	w := doJSON(r, "DELETE", "/menus/m1", "")
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
 }
