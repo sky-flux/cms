@@ -1,0 +1,10 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import { TagsPage } from '@/components/content/TagsPage';
+---
+
+<DashboardLayout title="Tags">
+  <div class="p-6">
+    <TagsPage client:load />
+  </div>
+</DashboardLayout>

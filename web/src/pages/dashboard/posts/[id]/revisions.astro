@@ -1,0 +1,10 @@
+---
+import DashboardLayout from '../../../../layouts/DashboardLayout.astro';
+import { RevisionsPage } from '@/components/content/RevisionsPage';
+
+const { id } = Astro.params;
+---
+
+<DashboardLayout title="Revisions">
+  <RevisionsPage client:load postId={id!} />
+</DashboardLayout>

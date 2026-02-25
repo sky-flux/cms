@@ -1,0 +1,10 @@
+---
+import DashboardLayout from '../../../../layouts/DashboardLayout.astro';
+import { PostEditorPage } from '@/components/content/PostEditorPage';
+
+const { id } = Astro.params;
+---
+
+<DashboardLayout title="Edit Post">
+  <PostEditorPage client:load mode="edit" postId={id} />
+</DashboardLayout>

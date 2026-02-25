@@ -1,0 +1,10 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import { CategoriesPage } from '@/components/content/CategoriesPage';
+---
+
+<DashboardLayout title="Categories">
+  <div class="p-6">
+    <CategoriesPage client:load />
+  </div>
+</DashboardLayout>

@@ -1,0 +1,8 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import { PostEditorPage } from '@/components/content/PostEditorPage';
+---
+
+<DashboardLayout title="New Post">
+  <PostEditorPage client:load mode="create" />
+</DashboardLayout>
