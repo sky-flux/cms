@@ -1,0 +1,20 @@
+---
+import AuthLayout from '@/layouts/AuthLayout.astro';
+import { MailCheck } from '@lucide/astro';
+---
+
+<AuthLayout title="Check Your Email - Sky Flux CMS">
+  <div class="rounded-lg border bg-card p-6 text-center shadow-sm">
+    <MailCheck class="mx-auto mb-4 size-12 text-primary" />
+    <h2 class="mb-2 text-xl font-semibold">Check your email</h2>
+    <p class="mb-6 text-sm text-muted-foreground">
+      If an account exists with that email, we've sent a password reset link.
+    </p>
+    <a
+      href="/login"
+      class="text-sm font-medium text-primary hover:underline"
+    >
+      Back to login
+    </a>
+  </div>
+</AuthLayout>

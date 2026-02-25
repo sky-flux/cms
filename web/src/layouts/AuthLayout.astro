@@ -1,0 +1,29 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { Sparkles } from '@lucide/astro';
+
+interface Props {
+  title?: string;
+  wide?: boolean;
+}
+
+const { title = 'Sky Flux CMS', wide = false } = Astro.props;
+const cardWidth = wide ? 'max-w-lg' : 'max-w-md';
+---
+
+<BaseLayout title={title}>
+  <div class="flex min-h-screen flex-col items-center justify-center px-4">
+    <div class={`w-full ${cardWidth}`}>
+      <div class="mb-8 flex items-center justify-center gap-2">
+        <Sparkles class="size-6 text-primary" />
+        <span class="text-xl font-bold">Sky Flux CMS</span>
+      </div>
+
+      <slot />
+
+      <p class="mt-8 text-center text-xs text-muted-foreground">
+        &copy; {new Date().getFullYear()} Sky Flux CMS
+      </p>
+    </div>
+  </div>
+</BaseLayout>

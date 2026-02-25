@@ -1,0 +1,20 @@
+---
+import AuthLayout from '@/layouts/AuthLayout.astro';
+import { PartyPopper } from '@lucide/astro';
+---
+
+<AuthLayout title="Setup Complete - Sky Flux CMS">
+  <div class="rounded-lg border bg-card p-6 text-center shadow-sm">
+    <PartyPopper class="mx-auto mb-4 size-12 text-primary" />
+    <h2 class="mb-2 text-xl font-semibold">Installation Complete</h2>
+    <p class="mb-6 text-sm text-muted-foreground">
+      Your CMS is ready to use.
+    </p>
+    <a
+      href="/login"
+      class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+    >
+      Go to login
+    </a>
+  </div>
+</AuthLayout>
