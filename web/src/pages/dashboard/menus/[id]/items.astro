@@ -1,0 +1,10 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { MenuItemsPage } from '@/components/system/MenuItemsPage';
+
+const { id } = Astro.params;
+---
+
+<DashboardLayout title="Menu Items - Sky Flux CMS">
+  <MenuItemsPage client:load menuId={id!} />
+</DashboardLayout>
