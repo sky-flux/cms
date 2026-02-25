@@ -201,6 +201,7 @@ CREATE TABLE {schema}.sfc_site_menus (
     name        VARCHAR(100) NOT NULL,
     slug        VARCHAR(100) NOT NULL UNIQUE,
     location    VARCHAR(50),
+    description TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -217,6 +218,8 @@ CREATE TABLE {schema}.sfc_site_menu_items (
     reference_id  UUID,
     sort_order    INT NOT NULL DEFAULT 0,
     status        SMALLINT NOT NULL DEFAULT 1,
+    icon          VARCHAR(50),
+    css_class     VARCHAR(100),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -15,8 +15,9 @@ type SiteMenu struct {
 	ID        string    `bun:"id,pk,type:uuid,default:uuidv7()" json:"id"`
 	Name      string    `bun:"name,notnull" json:"name"`
 	Slug      string    `bun:"slug,notnull,unique" json:"slug"`
-	Location  string    `bun:"location" json:"location,omitempty"`
-	CreatedAt time.Time `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
+	Location    string    `bun:"location" json:"location,omitempty"`
+	Description string    `bun:"description" json:"description,omitempty"`
+	CreatedAt   time.Time `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt time.Time `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 
 	Items []*SiteMenuItem `bun:"rel:has-many,join:id=menu_id" json:"items,omitempty"`
@@ -42,7 +43,9 @@ type SiteMenuItem struct {
 	ReferenceID *string      `bun:"reference_id,type:uuid" json:"reference_id,omitempty"`
 	SortOrder   int          `bun:"sort_order,notnull,default:0" json:"sort_order"`
 	Status      MenuItemStatus `bun:"status,notnull,type:smallint,default:1" json:"status"`
-	CreatedAt   time.Time    `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
+	Icon        string         `bun:"icon" json:"icon,omitempty"`
+	CSSClass    string         `bun:"css_class" json:"css_class,omitempty"`
+	CreatedAt   time.Time      `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time    `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
 
 	Children []*SiteMenuItem `bun:"rel:has-many,join:id=parent_id" json:"children,omitempty"`

@@ -129,5 +129,34 @@ func BuildAPIMetaMap() map[string]rbac.APIMeta {
 		"GET:/api/v1/site/posts/:id/preview":              {Name: "List previews", Description: "List active preview tokens", Group: "posts"},
 		"DELETE:/api/v1/site/posts/:id/preview":           {Name: "Revoke all previews", Description: "Revoke all preview tokens", Group: "posts"},
 		"DELETE:/api/v1/site/posts/:id/preview/:token_id": {Name: "Revoke preview", Description: "Revoke single preview token", Group: "posts"},
+
+		// Site-scoped: Comments
+		"PUT:/api/v1/site/comments/batch-status":  {Name: "Batch update comment status", Description: "Bulk moderate comments", Group: "comments"},
+		"GET:/api/v1/site/comments":               {Name: "List comments", Description: "List comments with filters", Group: "comments"},
+		"GET:/api/v1/site/comments/:id":           {Name: "Get comment", Description: "Get comment detail with replies", Group: "comments"},
+		"PUT:/api/v1/site/comments/:id/status":    {Name: "Update comment status", Description: "Change comment moderation status", Group: "comments"},
+		"PUT:/api/v1/site/comments/:id/pin":       {Name: "Toggle comment pin", Description: "Pin or unpin a comment", Group: "comments"},
+		"POST:/api/v1/site/comments/:id/reply":    {Name: "Reply to comment", Description: "Admin reply to comment", Group: "comments"},
+		"DELETE:/api/v1/site/comments/:id":        {Name: "Delete comment", Description: "Hard delete comment", Group: "comments"},
+
+		// Site-scoped: Menus (site navigation)
+		"GET:/api/v1/site/menus":                       {Name: "List menus", Description: "List navigation menus", Group: "menus"},
+		"POST:/api/v1/site/menus":                      {Name: "Create menu", Description: "Create navigation menu", Group: "menus"},
+		"GET:/api/v1/site/menus/:id":                   {Name: "Get menu", Description: "Get menu with item tree", Group: "menus"},
+		"PUT:/api/v1/site/menus/:id":                   {Name: "Update menu", Description: "Update menu metadata", Group: "menus"},
+		"DELETE:/api/v1/site/menus/:id":                {Name: "Delete menu", Description: "Delete menu with items", Group: "menus"},
+		"POST:/api/v1/site/menus/:id/items":            {Name: "Add menu item", Description: "Add item to menu", Group: "menus"},
+		"PUT:/api/v1/site/menus/:id/items/reorder":     {Name: "Reorder menu items", Description: "Batch reorder menu items", Group: "menus"},
+		"PUT:/api/v1/site/menus/:id/items/:item_id":    {Name: "Update menu item", Description: "Update menu item", Group: "menus"},
+		"DELETE:/api/v1/site/menus/:id/items/:item_id": {Name: "Delete menu item", Description: "Delete menu item", Group: "menus"},
+
+		// Site-scoped: Redirects
+		"DELETE:/api/v1/site/redirects/batch": {Name: "Batch delete redirects", Description: "Bulk delete redirects", Group: "redirects"},
+		"POST:/api/v1/site/redirects/import": {Name: "Import redirects", Description: "CSV import redirects", Group: "redirects"},
+		"GET:/api/v1/site/redirects/export":  {Name: "Export redirects", Description: "CSV export redirects", Group: "redirects"},
+		"GET:/api/v1/site/redirects":         {Name: "List redirects", Description: "List redirects with filters", Group: "redirects"},
+		"POST:/api/v1/site/redirects":        {Name: "Create redirect", Description: "Create URL redirect", Group: "redirects"},
+		"PUT:/api/v1/site/redirects/:id":     {Name: "Update redirect", Description: "Update URL redirect", Group: "redirects"},
+		"DELETE:/api/v1/site/redirects/:id":  {Name: "Delete redirect", Description: "Delete URL redirect", Group: "redirects"},
 	}
 }

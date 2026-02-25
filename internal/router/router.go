@@ -16,11 +16,13 @@ import (
 	"github.com/sky-flux/cms/internal/audit"
 	"github.com/sky-flux/cms/internal/auth"
 	"github.com/sky-flux/cms/internal/category"
+	"github.com/sky-flux/cms/internal/comment"
 	"github.com/sky-flux/cms/internal/config"
 	"github.com/sky-flux/cms/internal/media"
+	sitemenu "github.com/sky-flux/cms/internal/menu"
 	"github.com/sky-flux/cms/internal/middleware"
-	"github.com/sky-flux/cms/internal/post"
 	"github.com/sky-flux/cms/internal/model"
+	"github.com/sky-flux/cms/internal/post"
 	pkgaudit "github.com/sky-flux/cms/internal/pkg/audit"
 	"github.com/sky-flux/cms/internal/pkg/cache"
 	"github.com/sky-flux/cms/internal/pkg/imaging"
@@ -30,6 +32,7 @@ import (
 	"github.com/sky-flux/cms/internal/pkg/storage"
 	"github.com/sky-flux/cms/internal/posttype"
 	"github.com/sky-flux/cms/internal/rbac"
+	"github.com/sky-flux/cms/internal/redirect"
 	"github.com/sky-flux/cms/internal/setup"
 	"github.com/sky-flux/cms/internal/site"
 	"github.com/sky-flux/cms/internal/system"
@@ -347,6 +350,50 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	siteScoped.GET("/posts/:id/preview", postHandler.ListPreviewTokens)
 	siteScoped.DELETE("/posts/:id/preview", postHandler.RevokeAllPreviewTokens)
 	siteScoped.DELETE("/posts/:id/preview/:token_id", postHandler.RevokePreviewToken)
+
+	// Comments
+	commentRepo := comment.NewRepo(db)
+	commentSvc := comment.NewService(commentRepo, auditSvc, mailer)
+	commentHandler := comment.NewHandler(commentSvc)
+
+	// Static paths first to prevent Gin param capture
+	siteScoped.PUT("/comments/batch-status", commentHandler.BatchStatus)
+	siteScoped.GET("/comments", commentHandler.List)
+	siteScoped.GET("/comments/:id", commentHandler.Get)
+	siteScoped.PUT("/comments/:id/status", commentHandler.UpdateStatus)
+	siteScoped.PUT("/comments/:id/pin", commentHandler.TogglePin)
+	siteScoped.POST("/comments/:id/reply", commentHandler.Reply)
+	siteScoped.DELETE("/comments/:id", commentHandler.Delete)
+
+	// Menus (site navigation — distinct from RBAC admin menus)
+	menuRepo := sitemenu.NewMenuRepo(db)
+	menuItemRepo := sitemenu.NewItemRepo(db)
+	menuSvc := sitemenu.NewService(menuRepo, menuItemRepo, auditSvc)
+	menuHandler := sitemenu.NewHandler(menuSvc)
+
+	siteScoped.GET("/menus", menuHandler.ListMenus)
+	siteScoped.POST("/menus", menuHandler.CreateMenu)
+	siteScoped.GET("/menus/:id", menuHandler.GetMenu)
+	siteScoped.PUT("/menus/:id", menuHandler.UpdateMenu)
+	siteScoped.DELETE("/menus/:id", menuHandler.DeleteMenu)
+	siteScoped.POST("/menus/:id/items", menuHandler.AddItem)
+	siteScoped.PUT("/menus/:id/items/reorder", menuHandler.ReorderItems) // static before param
+	siteScoped.PUT("/menus/:id/items/:item_id", menuHandler.UpdateItem)
+	siteScoped.DELETE("/menus/:id/items/:item_id", menuHandler.DeleteItem)
+
+	// Redirects
+	redirectRepo := redirect.NewRepo(db)
+	redirectSvc := redirect.NewService(redirectRepo, auditSvc, cacheClient)
+	redirectHandler := redirect.NewHandler(redirectSvc)
+
+	// Static paths first
+	siteScoped.DELETE("/redirects/batch", redirectHandler.BatchDelete)
+	siteScoped.POST("/redirects/import", redirectHandler.Import)
+	siteScoped.GET("/redirects/export", redirectHandler.Export)
+	siteScoped.GET("/redirects", redirectHandler.List)
+	siteScoped.POST("/redirects", redirectHandler.Create)
+	siteScoped.PUT("/redirects/:id", redirectHandler.Update)
+	siteScoped.DELETE("/redirects/:id", redirectHandler.Delete)
 
 	// ── API Registry — sync routes to sfc_apis ──────────────────
 	registry := rbac.NewRegistry(rbacAPIRepo)
