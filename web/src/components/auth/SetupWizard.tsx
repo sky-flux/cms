@@ -301,7 +301,7 @@ export function SetupWizard() {
   const handleInstall = async () => {
     setIsInstalling(true);
     try {
-      await api.post('/api/v1/setup/initialize', {
+      await api.post('/v1/setup/initialize', {
         admin_display_name: formData.current.admin_display_name,
         admin_email: formData.current.admin_email,
         admin_password: formData.current.admin_password,

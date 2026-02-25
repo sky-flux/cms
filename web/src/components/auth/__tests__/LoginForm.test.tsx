@@ -93,7 +93,7 @@ describe('LoginForm', () => {
     await user.click(screen.getByRole('button', { name: /auth\.loginButton/i }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/v1/auth/login', {
+      expect(api.post).toHaveBeenCalledWith('/v1/auth/login', {
         email: 'a@b.com',
         password: 'password123',
       });

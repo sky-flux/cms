@@ -35,22 +35,22 @@ export function isLogin2FA(data: LoginSuccessData | Login2FAData): data is Login
 
 export const authApi = {
   login: (email: string, password: string) =>
-    api.post<LoginResponse>('/api/v1/auth/login', { email, password }),
+    api.post<LoginResponse>('/v1/auth/login', { email, password }),
 
   validate2FA: (code: string, tempToken: string) =>
-    api.post<LoginResponse>('/api/v1/auth/2fa/validate', { code }, {
+    api.post<LoginResponse>('/v1/auth/2fa/validate', { code }, {
       headers: { Authorization: `Bearer ${tempToken}` },
     }),
 
   forgotPassword: (email: string) =>
-    api.post('/api/v1/auth/forgot-password', { email }),
+    api.post('/v1/auth/forgot-password', { email }),
 
   resetPassword: (token: string, newPassword: string) =>
-    api.post('/api/v1/auth/reset-password', { token, new_password: newPassword }),
+    api.post('/v1/auth/reset-password', { token, new_password: newPassword }),
 
   setupCheck: () =>
-    api.post<{ success: boolean; data: { installed: boolean } }>('/api/v1/setup/check'),
+    api.post<{ success: boolean; data: { installed: boolean } }>('/v1/setup/check'),
 
   setupInstall: (payload: SetupInstallPayload) =>
-    api.post('/api/v1/setup/initialize', payload),
+    api.post('/v1/setup/initialize', payload),
 };

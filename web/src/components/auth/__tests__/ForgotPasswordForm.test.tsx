@@ -70,7 +70,7 @@ describe('ForgotPasswordForm', () => {
     await user.click(screen.getByRole('button', { name: /auth\.forgotPasswordSubmit/i }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/v1/auth/forgot-password', {
+      expect(api.post).toHaveBeenCalledWith('/v1/auth/forgot-password', {
         email: 'a@b.com',
       });
     });

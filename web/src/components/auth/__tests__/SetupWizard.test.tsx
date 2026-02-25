@@ -153,7 +153,7 @@ describe('SetupWizard', () => {
     await user.click(screen.getByRole('button', { name: /auth\.setupInstall/i }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/v1/setup/initialize', {
+      expect(api.post).toHaveBeenCalledWith('/v1/setup/initialize', {
         admin_display_name: 'Admin',
         admin_email: 'admin@test.com',
         admin_password: 'password123',

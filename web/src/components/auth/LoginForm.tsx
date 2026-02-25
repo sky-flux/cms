@@ -39,7 +39,7 @@ export function LoginForm() {
       const resp = await api.post<{
         success: boolean;
         data: LoginSuccessData | Login2FAData;
-      }>('/api/v1/auth/login', {
+      }>('/v1/auth/login', {
         email: values.email,
         password: values.password,
       });

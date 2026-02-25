@@ -196,40 +196,40 @@ function buildQuery(params: Record<string, unknown> | object): string {
 export const postsApi = {
   list: (params: PostListParams, opts?: RequestOptions) =>
     api.get<PaginatedResponse<PostSummary>>(
-      `/api/v1/site/posts${buildQuery(params)}`,
+      `/v1/site/posts${buildQuery(params)}`,
       opts,
     ),
 
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<Post>>(`/api/v1/site/posts/${id}`, opts),
+    api.get<ApiResponse<Post>>(`/v1/site/posts/${id}`, opts),
 
   create: (data: CreatePostDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<Post>>('/api/v1/site/posts', data, opts),
+    api.post<ApiResponse<Post>>('/v1/site/posts', data, opts),
 
   update: (id: string, data: UpdatePostDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<Post>>(`/api/v1/site/posts/${id}`, data, opts),
+    api.put<ApiResponse<Post>>(`/v1/site/posts/${id}`, data, opts),
 
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/posts/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/posts/${id}`, opts),
 
   publish: (id: string, opts?: RequestOptions) =>
-    api.post<ApiResponse<Post>>(`/api/v1/site/posts/${id}/publish`, undefined, opts),
+    api.post<ApiResponse<Post>>(`/v1/site/posts/${id}/publish`, undefined, opts),
 
   unpublish: (id: string, opts?: RequestOptions) =>
-    api.post<ApiResponse<Post>>(`/api/v1/site/posts/${id}/unpublish`, undefined, opts),
+    api.post<ApiResponse<Post>>(`/v1/site/posts/${id}/unpublish`, undefined, opts),
 
   revertToDraft: (id: string, opts?: RequestOptions) =>
-    api.post<ApiResponse<Post>>(`/api/v1/site/posts/${id}/revert-to-draft`, undefined, opts),
+    api.post<ApiResponse<Post>>(`/v1/site/posts/${id}/revert-to-draft`, undefined, opts),
 
   restore: (id: string, opts?: RequestOptions) =>
-    api.post<ApiResponse<Post>>(`/api/v1/site/posts/${id}/restore`, undefined, opts),
+    api.post<ApiResponse<Post>>(`/v1/site/posts/${id}/restore`, undefined, opts),
 
   getRevisions: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<Revision[]>>(`/api/v1/site/posts/${id}/revisions`, opts),
+    api.get<ApiResponse<Revision[]>>(`/v1/site/posts/${id}/revisions`, opts),
 
   rollback: (id: string, revisionId: string, opts?: RequestOptions) =>
     api.post<ApiResponse<Post>>(
-      `/api/v1/site/posts/${id}/revisions/${revisionId}/rollback`,
+      `/v1/site/posts/${id}/revisions/${revisionId}/rollback`,
       undefined,
       opts,
     ),
@@ -237,76 +237,76 @@ export const postsApi = {
 
 export const categoriesApi = {
   tree: (opts?: RequestOptions) =>
-    api.get<ApiResponse<CategoryNode[]>>('/api/v1/site/categories', opts),
+    api.get<ApiResponse<CategoryNode[]>>('/v1/site/categories', opts),
 
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<CategoryNode>>(`/api/v1/site/categories/${id}`, opts),
+    api.get<ApiResponse<CategoryNode>>(`/v1/site/categories/${id}`, opts),
 
   create: (data: CreateCategoryDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<CategoryNode>>('/api/v1/site/categories', data, opts),
+    api.post<ApiResponse<CategoryNode>>('/v1/site/categories', data, opts),
 
   update: (id: string, data: UpdateCategoryDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<CategoryNode>>(`/api/v1/site/categories/${id}`, data, opts),
+    api.put<ApiResponse<CategoryNode>>(`/v1/site/categories/${id}`, data, opts),
 
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/categories/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/categories/${id}`, opts),
 
   reorder: (orders: ReorderItem[], opts?: RequestOptions) =>
-    api.put<{ success: boolean }>('/api/v1/site/categories/reorder', { orders }, opts),
+    api.put<{ success: boolean }>('/v1/site/categories/reorder', { orders }, opts),
 };
 
 export const tagsApi = {
   list: (params: TagListParams, opts?: RequestOptions) =>
     api.get<PaginatedResponse<Tag>>(
-      `/api/v1/site/tags${buildQuery(params)}`,
+      `/v1/site/tags${buildQuery(params)}`,
       opts,
     ),
 
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<Tag>>(`/api/v1/site/tags/${id}`, opts),
+    api.get<ApiResponse<Tag>>(`/v1/site/tags/${id}`, opts),
 
   create: (data: CreateTagDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<Tag>>('/api/v1/site/tags', data, opts),
+    api.post<ApiResponse<Tag>>('/v1/site/tags', data, opts),
 
   update: (id: string, data: UpdateTagDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<Tag>>(`/api/v1/site/tags/${id}`, data, opts),
+    api.put<ApiResponse<Tag>>(`/v1/site/tags/${id}`, data, opts),
 
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/tags/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/tags/${id}`, opts),
 
   suggest: (q: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<Tag[]>>(`/api/v1/site/tags/suggest?q=${encodeURIComponent(q)}`, opts),
+    api.get<ApiResponse<Tag[]>>(`/v1/site/tags/suggest?q=${encodeURIComponent(q)}`, opts),
 };
 
 export const mediaApi = {
   list: (params: MediaListParams, opts?: RequestOptions) =>
     api.get<PaginatedResponse<MediaFile>>(
-      `/api/v1/site/media${buildQuery(params)}`,
+      `/v1/site/media${buildQuery(params)}`,
       opts,
     ),
 
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<MediaFileDetail>>(`/api/v1/site/media/${id}`, opts),
+    api.get<ApiResponse<MediaFileDetail>>(`/v1/site/media/${id}`, opts),
 
   upload: (file: File, altText?: string) => {
     const formData = new FormData();
     formData.append('file', file);
     if (altText) formData.append('alt_text', altText);
-    return requestFormData<ApiResponse<MediaFile>>('POST', '/api/v1/site/media', formData);
+    return requestFormData<ApiResponse<MediaFile>>('POST', '/v1/site/media', formData);
   },
 
   updateMeta: (id: string, data: UpdateMediaDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<MediaFile>>(`/api/v1/site/media/${id}`, data, opts),
+    api.put<ApiResponse<MediaFile>>(`/v1/site/media/${id}`, data, opts),
 
   delete: (id: string, force?: boolean, opts?: RequestOptions) =>
     api.delete<{ success: boolean }>(
-      `/api/v1/site/media/${id}${force ? '?force=true' : ''}`,
+      `/v1/site/media/${id}${force ? '?force=true' : ''}`,
       opts,
     ),
 
   batchDelete: (ids: string[], force?: boolean, opts?: RequestOptions) =>
     api.post<ApiResponse<BatchDeleteResult>>(
-      `/api/v1/site/media/batch-delete${force ? '?force=true' : ''}`,
+      `/v1/site/media/batch-delete${force ? '?force=true' : ''}`,
       { ids },
       opts,
     ),

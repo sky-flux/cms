@@ -1,4 +1,4 @@
-.PHONY: setup dev dev-backend dev-frontend test test-backend test-frontend lint build clean migrate-up migrate-down migrate-status
+.PHONY: setup dev dev-backend dev-frontend test test-backend test-frontend lint build clean migrate-up migrate-down migrate-status test-perf-smoke test-perf test-perf-public test-all
 
 # ──────────────────────────────────────
 # 开发环境
@@ -36,6 +36,17 @@ test-coverage:
 	go test -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
+
+test-perf-smoke:
+	k6 run web/performance/smoke.ts
+
+test-perf:
+	k6 run web/performance/full-load.ts
+
+test-perf-public:
+	k6 run web/performance/scenarios/public-api.ts
+
+test-all: test test-perf-smoke
 
 # ──────────────────────────────────────
 # 代码质量

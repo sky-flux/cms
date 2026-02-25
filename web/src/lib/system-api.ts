@@ -47,15 +47,15 @@ export interface UpdateUserDTO {
 
 export const usersApi = {
   list: (params: UserListParams, opts?: RequestOptions) =>
-    api.get<PaginatedResponse<User>>(`/api/v1/users${buildQuery(params)}`, opts),
+    api.get<PaginatedResponse<User>>(`/v1/users${buildQuery(params)}`, opts),
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<User>>(`/api/v1/users/${id}`, opts),
+    api.get<ApiResponse<User>>(`/v1/users/${id}`, opts),
   create: (data: CreateUserDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<User>>('/api/v1/users', data, opts),
+    api.post<ApiResponse<User>>('/v1/users', data, opts),
   update: (id: string, data: UpdateUserDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<User>>(`/api/v1/users/${id}`, data, opts),
+    api.put<ApiResponse<User>>(`/v1/users/${id}`, data, opts),
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/users/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/users/${id}`, opts),
 };
 
 // --- Roles ---
@@ -99,23 +99,23 @@ export interface AdminMenu {
 
 export const rolesApi = {
   list: (opts?: RequestOptions) =>
-    api.get<ApiResponse<Role[]>>('/api/v1/rbac/roles', opts),
+    api.get<ApiResponse<Role[]>>('/v1/rbac/roles', opts),
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<Role>>(`/api/v1/rbac/roles/${id}`, opts),
+    api.get<ApiResponse<Role>>(`/v1/rbac/roles/${id}`, opts),
   create: (data: CreateRoleDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<Role>>('/api/v1/rbac/roles', data, opts),
+    api.post<ApiResponse<Role>>('/v1/rbac/roles', data, opts),
   update: (id: string, data: UpdateRoleDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<Role>>(`/api/v1/rbac/roles/${id}`, data, opts),
+    api.put<ApiResponse<Role>>(`/v1/rbac/roles/${id}`, data, opts),
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/rbac/roles/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/rbac/roles/${id}`, opts),
   getApis: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<string[]>>(`/api/v1/rbac/roles/${id}/apis`, opts),
+    api.get<ApiResponse<string[]>>(`/v1/rbac/roles/${id}/apis`, opts),
   setApis: (id: string, apiIds: string[], opts?: RequestOptions) =>
-    api.put<{ success: boolean }>(`/api/v1/rbac/roles/${id}/apis`, { api_ids: apiIds }, opts),
+    api.put<{ success: boolean }>(`/v1/rbac/roles/${id}/apis`, { api_ids: apiIds }, opts),
   getMenus: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<string[]>>(`/api/v1/rbac/roles/${id}/menus`, opts),
+    api.get<ApiResponse<string[]>>(`/v1/rbac/roles/${id}/menus`, opts),
   setMenus: (id: string, menuIds: string[], opts?: RequestOptions) =>
-    api.put<{ success: boolean }>(`/api/v1/rbac/roles/${id}/menus`, { menu_ids: menuIds }, opts),
+    api.put<{ success: boolean }>(`/v1/rbac/roles/${id}/menus`, { menu_ids: menuIds }, opts),
 };
 
 // --- Templates ---
@@ -128,27 +128,27 @@ export interface RoleTemplate {
 
 export const templatesApi = {
   list: (opts?: RequestOptions) =>
-    api.get<ApiResponse<RoleTemplate[]>>('/api/v1/rbac/templates', opts),
+    api.get<ApiResponse<RoleTemplate[]>>('/v1/rbac/templates', opts),
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<RoleTemplate>>(`/api/v1/rbac/templates/${id}`, opts),
+    api.get<ApiResponse<RoleTemplate>>(`/v1/rbac/templates/${id}`, opts),
   create: (data: { name: string; description?: string }, opts?: RequestOptions) =>
-    api.post<ApiResponse<RoleTemplate>>('/api/v1/rbac/templates', data, opts),
+    api.post<ApiResponse<RoleTemplate>>('/v1/rbac/templates', data, opts),
   update: (id: string, data: { name?: string; description?: string }, opts?: RequestOptions) =>
-    api.put<ApiResponse<RoleTemplate>>(`/api/v1/rbac/templates/${id}`, data, opts),
+    api.put<ApiResponse<RoleTemplate>>(`/v1/rbac/templates/${id}`, data, opts),
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/rbac/templates/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/rbac/templates/${id}`, opts),
   apply: (roleId: string, templateId: string, opts?: RequestOptions) =>
-    api.post<{ success: boolean }>(`/api/v1/rbac/roles/${roleId}/apply-template`, { template_id: templateId }, opts),
+    api.post<{ success: boolean }>(`/v1/rbac/roles/${roleId}/apply-template`, { template_id: templateId }, opts),
 };
 
 // --- RBAC Helpers ---
 export const rbacApi = {
   listApis: (opts?: RequestOptions) =>
-    api.get<ApiResponse<ApiEndpoint[]>>('/api/v1/rbac/apis', opts),
+    api.get<ApiResponse<ApiEndpoint[]>>('/v1/rbac/apis', opts),
   getMyMenus: (opts?: RequestOptions) =>
-    api.get<ApiResponse<AdminMenu[]>>('/api/v1/rbac/me/menus', opts),
+    api.get<ApiResponse<AdminMenu[]>>('/v1/rbac/me/menus', opts),
   listAdminMenus: (opts?: RequestOptions) =>
-    api.get<ApiResponse<AdminMenu[]>>('/api/v1/rbac/menus', opts),
+    api.get<ApiResponse<AdminMenu[]>>('/v1/rbac/menus', opts),
 };
 
 // --- Sites ---
@@ -214,21 +214,21 @@ export interface SiteUserListParams {
 
 export const sitesApi = {
   list: (params: SiteListParams, opts?: RequestOptions) =>
-    api.get<PaginatedResponse<Site>>(`/api/v1/sites${buildQuery(params)}`, opts),
+    api.get<PaginatedResponse<Site>>(`/v1/sites${buildQuery(params)}`, opts),
   get: (slug: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<Site>>(`/api/v1/sites/${slug}`, opts),
+    api.get<ApiResponse<Site>>(`/v1/sites/${slug}`, opts),
   create: (data: CreateSiteDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<Site>>('/api/v1/sites', data, opts),
+    api.post<ApiResponse<Site>>('/v1/sites', data, opts),
   update: (slug: string, data: UpdateSiteDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<Site>>(`/api/v1/sites/${slug}`, data, opts),
+    api.put<ApiResponse<Site>>(`/v1/sites/${slug}`, data, opts),
   deleteSite: (slug: string, confirmSlug: string, opts?: RequestOptions) =>
-    api.post<{ success: boolean }>(`/api/v1/sites/${slug}/delete`, { confirm_slug: confirmSlug }, opts),
+    api.post<{ success: boolean }>(`/v1/sites/${slug}/delete`, { confirm_slug: confirmSlug }, opts),
   listUsers: (slug: string, params: SiteUserListParams, opts?: RequestOptions) =>
-    api.get<PaginatedResponse<SiteUser>>(`/api/v1/sites/${slug}/users${buildQuery(params)}`, opts),
+    api.get<PaginatedResponse<SiteUser>>(`/v1/sites/${slug}/users${buildQuery(params)}`, opts),
   assignRole: (slug: string, userId: string, role: string, opts?: RequestOptions) =>
-    api.put<ApiResponse<{ user_id: string; site_slug: string; role: string }>>(`/api/v1/sites/${slug}/users/${userId}/role`, { role }, opts),
+    api.put<ApiResponse<{ user_id: string; site_slug: string; role: string }>>(`/v1/sites/${slug}/users/${userId}/role`, { role }, opts),
   removeRole: (slug: string, userId: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/sites/${slug}/users/${userId}/role`, opts),
+    api.delete<{ success: boolean }>(`/v1/sites/${slug}/users/${userId}/role`, opts),
 };
 
 // --- Settings ---
@@ -240,9 +240,9 @@ export interface SettingItem {
 
 export const settingsApi = {
   get: (opts?: RequestOptions) =>
-    api.get<ApiResponse<SettingItem[]>>('/api/v1/site/settings', opts),
+    api.get<ApiResponse<SettingItem[]>>('/v1/site/settings', opts),
   update: (key: string, value: string, opts?: RequestOptions) =>
-    api.put<ApiResponse<SettingItem>>('/api/v1/site/settings', { key, value }, opts),
+    api.put<ApiResponse<SettingItem>>('/v1/site/settings', { key, value }, opts),
 };
 
 // --- API Keys ---
@@ -275,11 +275,11 @@ export interface CreateApiKeyResponse {
 
 export const apiKeysApi = {
   list: (opts?: RequestOptions) =>
-    api.get<ApiResponse<ApiKey[]>>('/api/v1/site/api-keys', opts),
+    api.get<ApiResponse<ApiKey[]>>('/v1/site/api-keys', opts),
   create: (data: CreateApiKeyDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<CreateApiKeyResponse>>('/api/v1/site/api-keys', data, opts),
+    api.post<ApiResponse<CreateApiKeyResponse>>('/v1/site/api-keys', data, opts),
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/api-keys/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/api-keys/${id}`, opts),
 };
 
 // --- Audit ---
@@ -306,7 +306,7 @@ export interface AuditListParams {
 
 export const auditApi = {
   list: (params: AuditListParams, opts?: RequestOptions) =>
-    api.get<PaginatedResponse<AuditLog>>(`/api/v1/site/audit-logs${buildQuery(params)}`, opts),
+    api.get<PaginatedResponse<AuditLog>>(`/v1/site/audit-logs${buildQuery(params)}`, opts),
 };
 
 // --- Comments ---
@@ -339,19 +339,19 @@ export interface CommentListParams {
 
 export const commentsApi = {
   list: (params: CommentListParams, opts?: RequestOptions) =>
-    api.get<PaginatedResponse<Comment>>(`/api/v1/site/comments${buildQuery(params)}`, opts),
+    api.get<PaginatedResponse<Comment>>(`/v1/site/comments${buildQuery(params)}`, opts),
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<Comment>>(`/api/v1/site/comments/${id}`, opts),
+    api.get<ApiResponse<Comment>>(`/v1/site/comments/${id}`, opts),
   updateStatus: (id: string, status: string, opts?: RequestOptions) =>
-    api.put<ApiResponse<{ id: string; status: string }>>(`/api/v1/site/comments/${id}/status`, { status }, opts),
+    api.put<ApiResponse<{ id: string; status: string }>>(`/v1/site/comments/${id}/status`, { status }, opts),
   togglePin: (id: string, isPinned: boolean, opts?: RequestOptions) =>
-    api.put<ApiResponse<{ id: string; is_pinned: boolean }>>(`/api/v1/site/comments/${id}/pin`, { is_pinned: isPinned }, opts),
+    api.put<ApiResponse<{ id: string; is_pinned: boolean }>>(`/v1/site/comments/${id}/pin`, { is_pinned: isPinned }, opts),
   reply: (id: string, content: string, opts?: RequestOptions) =>
-    api.post<ApiResponse<Comment>>(`/api/v1/site/comments/${id}/reply`, { content }, opts),
+    api.post<ApiResponse<Comment>>(`/v1/site/comments/${id}/reply`, { content }, opts),
   batchStatus: (commentIds: string[], status: string, opts?: RequestOptions) =>
-    api.put<ApiResponse<{ updated_count: number }>>('/api/v1/site/comments/batch-status', { comment_ids: commentIds, status }, opts),
+    api.put<ApiResponse<{ updated_count: number }>>('/v1/site/comments/batch-status', { comment_ids: commentIds, status }, opts),
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/comments/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/comments/${id}`, opts),
 };
 
 // --- Menus (site-scoped navigation menus) ---
@@ -423,23 +423,23 @@ export interface ReorderMenuItemDTO {
 
 export const siteMenusApi = {
   list: (params?: { location?: string }, opts?: RequestOptions) =>
-    api.get<ApiResponse<SiteMenu[]>>(`/api/v1/site/menus${params ? buildQuery(params) : ''}`, opts),
+    api.get<ApiResponse<SiteMenu[]>>(`/v1/site/menus${params ? buildQuery(params) : ''}`, opts),
   get: (id: string, opts?: RequestOptions) =>
-    api.get<ApiResponse<SiteMenuDetail>>(`/api/v1/site/menus/${id}`, opts),
+    api.get<ApiResponse<SiteMenuDetail>>(`/v1/site/menus/${id}`, opts),
   create: (data: CreateSiteMenuDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<SiteMenu>>('/api/v1/site/menus', data, opts),
+    api.post<ApiResponse<SiteMenu>>('/v1/site/menus', data, opts),
   update: (id: string, data: UpdateSiteMenuDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<SiteMenu>>(`/api/v1/site/menus/${id}`, data, opts),
+    api.put<ApiResponse<SiteMenu>>(`/v1/site/menus/${id}`, data, opts),
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/menus/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/menus/${id}`, opts),
   addItem: (menuId: string, data: CreateMenuItemDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<SiteMenuItem>>(`/api/v1/site/menus/${menuId}/items`, data, opts),
+    api.post<ApiResponse<SiteMenuItem>>(`/v1/site/menus/${menuId}/items`, data, opts),
   updateItem: (menuId: string, itemId: string, data: UpdateMenuItemDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<SiteMenuItem>>(`/api/v1/site/menus/${menuId}/items/${itemId}`, data, opts),
+    api.put<ApiResponse<SiteMenuItem>>(`/v1/site/menus/${menuId}/items/${itemId}`, data, opts),
   deleteItem: (menuId: string, itemId: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/menus/${menuId}/items/${itemId}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/menus/${menuId}/items/${itemId}`, opts),
   reorderItems: (menuId: string, items: ReorderMenuItemDTO[], opts?: RequestOptions) =>
-    api.put<{ success: boolean }>(`/api/v1/site/menus/${menuId}/items/reorder`, { items }, opts),
+    api.put<{ success: boolean }>(`/v1/site/menus/${menuId}/items/reorder`, { items }, opts),
 };
 
 // --- Redirects ---
@@ -482,20 +482,20 @@ export interface CsvImportResult {
 
 export const redirectsApi = {
   list: (params: RedirectListParams, opts?: RequestOptions) =>
-    api.get<PaginatedResponse<Redirect>>(`/api/v1/site/redirects${buildQuery(params)}`, opts),
+    api.get<PaginatedResponse<Redirect>>(`/v1/site/redirects${buildQuery(params)}`, opts),
   create: (data: CreateRedirectDTO, opts?: RequestOptions) =>
-    api.post<ApiResponse<Redirect>>('/api/v1/site/redirects', data, opts),
+    api.post<ApiResponse<Redirect>>('/v1/site/redirects', data, opts),
   update: (id: string, data: UpdateRedirectDTO, opts?: RequestOptions) =>
-    api.put<ApiResponse<Redirect>>(`/api/v1/site/redirects/${id}`, data, opts),
+    api.put<ApiResponse<Redirect>>(`/v1/site/redirects/${id}`, data, opts),
   delete: (id: string, opts?: RequestOptions) =>
-    api.delete<{ success: boolean }>(`/api/v1/site/redirects/${id}`, opts),
+    api.delete<{ success: boolean }>(`/v1/site/redirects/${id}`, opts),
   batchDelete: (ids: string[], opts?: RequestOptions) =>
-    api.post<ApiResponse<{ deleted_count: number }>>('/api/v1/site/redirects/batch', { ids }, opts),
+    api.post<ApiResponse<{ deleted_count: number }>>('/v1/site/redirects/batch', { ids }, opts),
   import: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return requestFormData<ApiResponse<CsvImportResult>>('POST', '/api/v1/site/redirects/import', formData);
+    return requestFormData<ApiResponse<CsvImportResult>>('POST', '/v1/site/redirects/import', formData);
   },
   export: (opts?: RequestOptions) =>
-    api.get<Blob>('/api/v1/site/redirects/export', opts),
+    api.get<Blob>('/v1/site/redirects/export', opts),
 };

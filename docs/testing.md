@@ -917,7 +917,7 @@ test.describe('角色权限', () => {
 ### 6.1 k6 压测方案
 
 ```javascript
-// tests/performance/api-load.js
+// web/performance/api-load.js
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
@@ -1325,7 +1325,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: grafana/k6-action@v0.3.1
         with:
-          filename: tests/performance/api-load.js
+          filename: web/performance/api-load.js
           flags: --out json=results.json
         env:
           BASE_URL: http://localhost:8080
@@ -1357,7 +1357,7 @@ cd web && bunx playwright test
 cd web && bunx playwright test --ui
 
 # 性能测试
-k6 run tests/performance/api-load.js
+k6 run web/performance/api-load.js
 
 # 全量测试
 make test-all
@@ -1381,7 +1381,7 @@ test-e2e:
 	cd web && bunx playwright test
 
 test-perf:
-	k6 run tests/performance/api-load.js
+	k6 run web/performance/api-load.js
 
 test-all: test-unit test-integration test-e2e
 

@@ -29,7 +29,7 @@ export function TwoFactorForm({ tempToken }: TwoFactorFormProps) {
       const resp = await api.post<{
         success: boolean;
         data: LoginSuccessData;
-      }>('/api/v1/auth/2fa/validate', { code }, {
+      }>('/v1/auth/2fa/validate', { code }, {
         headers: { Authorization: `Bearer ${tempToken}` },
       });
 

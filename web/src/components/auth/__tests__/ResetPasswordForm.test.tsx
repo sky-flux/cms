@@ -83,7 +83,7 @@ describe('ResetPasswordForm', () => {
     await user.click(screen.getByRole('button', { name: /auth\.resetPasswordSubmit/i }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/v1/auth/reset-password', {
+      expect(api.post).toHaveBeenCalledWith('/v1/auth/reset-password', {
         token: 'valid-reset-token',
         new_password: 'newpass1234',
       });

@@ -28,7 +28,7 @@ export function ForgotPasswordForm() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await api.post('/api/v1/auth/forgot-password', { email: values.email });
+      await api.post('/v1/auth/forgot-password', { email: values.email });
     } catch {
       // Intentionally swallow -- never reveal if email exists
     }

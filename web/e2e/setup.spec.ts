@@ -18,14 +18,19 @@ test.describe.serial('Installation Wizard', () => {
     await page.goto('/setup');
 
     // Step 1: Admin account
+    // Click first to ensure react-hook-form register() ref is attached
+    await page.locator('#admin_display_name').click();
     await page.locator('#admin_display_name').fill(TEST_SUPER.displayName);
     await page.locator('#admin_email').fill(TEST_SUPER.email);
     await page.locator('#password').fill(TEST_SUPER.password);
     await page.locator('#confirmPassword').fill(TEST_SUPER.password);
+    // Verify field has value before submitting
+    await expect(page.locator('#admin_display_name')).toHaveValue(TEST_SUPER.displayName);
     await page.locator('button[type="submit"]').click();
 
     // Step 2: Site info
     await expect(page.locator('#site_name')).toBeVisible({ timeout: 5_000 });
+    await page.locator('#site_name').click();
     await page.locator('#site_name').fill(TEST_SITE.name);
     await page.locator('#site_slug').fill(TEST_SITE.slug);
     await page.locator('#site_url').fill(TEST_SITE.url);
@@ -34,7 +39,8 @@ test.describe.serial('Installation Wizard', () => {
     // Step 3: Review & Install
     await expect(page.getByText(TEST_SUPER.email)).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText(TEST_SITE.name)).toBeVisible();
-    await page.locator('button[type="submit"]').click();
+    // Step3Review uses onClick, not form submit
+    await page.getByRole('button', { name: /install/i }).click();
 
     await expect(page).toHaveURL(/\/setup\/complete/, { timeout: 15_000 });
   });

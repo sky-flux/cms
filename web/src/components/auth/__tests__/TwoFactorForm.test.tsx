@@ -93,7 +93,7 @@ describe('TwoFactorForm', () => {
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith(
-        '/api/v1/auth/2fa/validate',
+        '/v1/auth/2fa/validate',
         { code: '123456' },
         { headers: { Authorization: 'Bearer test-temp-token' } },
       );

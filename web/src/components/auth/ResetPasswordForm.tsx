@@ -39,7 +39,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await api.post('/api/v1/auth/reset-password', {
+      await api.post('/v1/auth/reset-password', {
         token,
         new_password: values.newPassword,
       });
