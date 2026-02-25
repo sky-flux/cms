@@ -11,7 +11,7 @@ test.describe.serial('Installation Wizard', () => {
 
   test('navigate to /setup shows wizard', async ({ page }) => {
     await page.goto('/setup');
-    await expect(page.locator('#admin_display_name')).toBeVisible();
+    await expect(page.locator('#super_name')).toBeVisible();
   });
 
   test('complete 3-step installation wizard', async ({ page }) => {
@@ -19,13 +19,13 @@ test.describe.serial('Installation Wizard', () => {
 
     // Step 1: Admin account
     // Click first to ensure react-hook-form register() ref is attached
-    await page.locator('#admin_display_name').click();
-    await page.locator('#admin_display_name').fill(TEST_SUPER.displayName);
-    await page.locator('#admin_email').fill(TEST_SUPER.email);
+    await page.locator('#super_name').click();
+    await page.locator('#super_name').fill(TEST_SUPER.displayName);
+    await page.locator('#super_email').fill(TEST_SUPER.email);
     await page.locator('#password').fill(TEST_SUPER.password);
     await page.locator('#confirmPassword').fill(TEST_SUPER.password);
     // Verify field has value before submitting
-    await expect(page.locator('#admin_display_name')).toHaveValue(TEST_SUPER.displayName);
+    await expect(page.locator('#super_name')).toHaveValue(TEST_SUPER.displayName);
     await page.locator('button[type="submit"]').click();
 
     // Step 2: Site info

@@ -44,7 +44,7 @@ vi.mock('sonner', () => ({
   },
 }));
 
-const mockAuditLogs: AuditLog[] = [
+const mockAuditEntries: AuditLog[] = [
   {
     id: 'a1',
     actor: { id: 'u1', display_name: 'Alice Admin' },
@@ -100,7 +100,7 @@ const mockPagination: PaginationMeta = {
 
 describe('AuditTable', () => {
   const defaultProps = {
-    logs: mockAuditLogs,
+    logs: mockAuditEntries,
     pagination: mockPagination,
     loading: false,
     onPageChange: vi.fn(),

@@ -1,0 +1,67 @@
+{
+    email admin@{$DOMAIN}
+    admin off
+}
+
+{$DOMAIN} {
+    # HTTPS 自动配置
+    tls {
+        on_demand
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    # Enable Gzip compression
+    encode {
+        gzip 6
+        minimum_length 512
+    }
+
+    # Static assets - 1 year immutable cache
+    @staticAssets {
+        path /_astro/*
+    }
+    handle @staticAssets {
+        header Cache-Control "public, max-age=31536000, immutable"
+        reverse_proxy web:3000
+    }
+
+    # RSS/Sitemap - 1 hour cache
+    @feedCache {
+        path /feed/*
+    }
+    handle @feedCache {
+        header Cache-Control "public, max-age=3600"
+        reverse_proxy api:8080
+    }
+
+    @sitemapCache {
+        path /sitemap*
+    }
+    handle @sitemapCache {
+        header Cache-Control "public, max-age=3600"
+        reverse_proxy api:8080
+    }
+
+    # API - no caching, proxy to backend
+    @api {
+        path /api/*
+    }
+    handle @api {
+        reverse_proxy api:8080
+    }
+
+    # Default - proxy to frontend SSR
+    handle {
+        reverse_proxy web:3000
+    }
+}

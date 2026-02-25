@@ -1,13 +1,140 @@
 ---
-// biome-ignore lint/correctness/noUnusedImports: used in Astro template
 import BaseLayout from '@/layouts/BaseLayout.astro';
+
+// Check installation status on server by calling backend directly
+let isInstalled = false;
+let setupCheckError = false;
+
+try {
+  // In SSR, we need to use absolute URL to backend
+  const apiURL = 'http://api:8080/api/v1/setup/check';
+  const response = await fetch(apiURL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    signal: AbortSignal.timeout(5000), // 5s timeout
+  });
+
+  if (response.ok) {
+    const result = await response.json();
+    isInstalled = result.data.installed;
+    console.log('[Setup Check] Installed:', isInstalled);
+  } else {
+    console.error('[Setup Check] API returned status:', response.status);
+    setupCheckError = true;
+  }
+} catch (error: any) {
+  console.error('[Setup Check] Failed:', error.message);
+  setupCheckError = true;
+  // On error, assume not installed to show setup page
+  isInstalled = false;
+}
+
+// Redirect to setup if not installed
+if (!isInstalled) {
+  console.log('[Setup Check] Redirecting to /setup');
+  return Astro.redirect('/setup');
+}
+
+// If installed, show public theme (home page)
+// Do NOT redirect to dashboard - let users see the public site
+console.log('[Setup Check] Showing public theme');
 ---
 
 <BaseLayout title="Sky Flux CMS">
-  <main class="flex min-h-screen items-center justify-center">
-    <div class="text-center">
-      <h1 class="text-4xl font-bold">Sky Flux CMS</h1>
-      <p class="mt-4 text-muted-foreground">Setup required — run the installation wizard to get started.</p>
+  <main class="flex min-h-screen flex-col items-center justify-center bg-background p-8">
+    <div class="max-w-2xl text-center">
+      <h1 class="text-6xl font-bold tracking-tight text-foreground">
+        Sky Flux CMS
+      </h1>
+      <p class="mt-6 text-xl text-muted-foreground">
+        A modern, high-performance Headless CMS
+      </p>
+      <p class="mt-4 text-muted-foreground">
+        This is the public-facing side of your website.
+      </p>
+
+      <div class="mt-8 grid gap-4 sm:grid-cols-2">
+        <a
+          href="/dashboard"
+          class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-primary-foreground font-medium transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="mr-2 h-5 w-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          Admin Dashboard
+        </a>
+        <a
+          href="/api/public/v1/posts"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center justify-center rounded-md border border-input bg-background px-6 py-3 text-foreground font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="mr-2 h-5 w-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z"
+            />
+          </svg>
+          Public API Docs
+        </a>
+      </div>
+
+      <div class="mt-12 rounded-lg bg-muted/50 p-6 text-left">
+        <h2 class="text-lg font-semibold text-foreground">
+          🚀 Quick Start
+        </h2>
+        <ul class="mt-4 space-y-2 text-sm text-muted-foreground">
+          <li>
+            <strong class="text-foreground">Admin Dashboard:</strong>{" "}
+            <a href="/dashboard" class="text-primary hover:underline">/dashboard</a>
+            {" "}— Manage your content, users, and settings
+          </li>
+          <li>
+            <strong class="text-foreground">Public API:</strong>{" "}
+            <a
+              href="/api/public/v1/posts"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-primary hover:underline"
+            >
+              /api/public/v1/*
+            </a>
+            {" "}— Consume content from any frontend framework
+          </li>
+          <li>
+            <strong class="text-foreground">RSS Feed:</strong>{" "}
+            <a href="/feed/rss" class="text-primary hover:underline">/feed/rss</a>
+            {" "}— Subscribe to updates
+          </li>
+          <li>
+            <strong class="text-foreground">Sitemap:</strong>{" "}
+            <a href="/sitemap.xml" class="text-primary hover:underline">/sitemap.xml</a>
+            {" "}— SEO sitemap
+          </li>
+        </ul>
+      </div>
+
+      <div class="mt-8 text-sm text-muted-foreground">
+        <p>
+          💡 <strong>Headless CMS</strong>: Build your custom frontend with any
+          framework (React, Vue, Svelte, Next.js, etc.) using our Public API.
+        </p>
+      </div>
     </div>
   </main>
 </BaseLayout>

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface HeaderProps {
-  user: { displayName: string; email: string; avatarUrl?: string } | null;
+  user?: { displayName: string; email: string; avatarUrl?: string } | null;
   siteName?: string;
   onLogout?: () => void;
   onToggleSidebar?: () => void;

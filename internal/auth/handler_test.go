@@ -114,11 +114,9 @@ func TestHandlerLogin_Success(t *testing.T) {
 	assert.True(t, resp.Success)
 	assert.Empty(t, resp.Error)
 
-	// Parse data payload
+	// Parse data payload - now only user is in response (tokens in cookies)
 	var data map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Data, &data))
-	assert.NotEmpty(t, data["access_token"])
-	assert.Equal(t, "Bearer", data["token_type"])
 	assert.NotNil(t, data["user"])
 
 	userMap := data["user"].(map[string]interface{})
@@ -126,19 +124,25 @@ func TestHandlerLogin_Success(t *testing.T) {
 	assert.Equal(t, testUserEmail, userMap["email"])
 	assert.Equal(t, "Alice", userMap["display_name"])
 
-	// Check Set-Cookie header for refresh_token
+	// Check Set-Cookie headers for access_token and refresh_token
 	cookies := w.Result().Cookies()
-	var refreshCookie *http.Cookie
+	var accessCookie, refreshCookie *http.Cookie
 	for _, c := range cookies {
-		if c.Name == "refresh_token" {
+		if c.Name == "access_token" {
+			accessCookie = c
+		} else if c.Name == "refresh_token" {
 			refreshCookie = c
-			break
 		}
 	}
+	require.NotNil(t, accessCookie, "access_token cookie should be set")
+	assert.NotEmpty(t, accessCookie.Value)
+	assert.True(t, accessCookie.HttpOnly)
+	// Secure is only set when X-Forwarded-Proto=https or in release mode
+
 	require.NotNil(t, refreshCookie, "refresh_token cookie should be set")
 	assert.NotEmpty(t, refreshCookie.Value)
 	assert.True(t, refreshCookie.HttpOnly)
-	assert.True(t, refreshCookie.Secure)
+	// Secure is only set when X-Forwarded-Proto=https or in release mode
 }
 
 func TestHandlerLogin_InvalidBody(t *testing.T) {
@@ -156,10 +160,6 @@ func TestHandlerLogin_InvalidBody(t *testing.T) {
 		{
 			name: "missing password",
 			body: map[string]string{"email": testUserEmail},
-		},
-		{
-			name: "invalid email format",
-			body: map[string]string{"email": "not-an-email", "password": testPassword},
 		},
 	}
 

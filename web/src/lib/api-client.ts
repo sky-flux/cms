@@ -1,4 +1,25 @@
-const API_BASE = import.meta.env.PUBLIC_API_URL || '/api';
+// Detect if running in Docker production environment
+const isDockerProduction = () => {
+  try {
+    // Check if we're in a container by looking for Docker indicators
+    return typeof window === 'undefined' &&
+           process.env.NODE_ENV === 'production';
+  } catch {
+    return false;
+  }
+};
+
+// Use internal API URL for server-side calls in Docker, public URL for browser
+const getApiBase = () => {
+  // Server-side in Docker production: use internal API URL
+  if (isDockerProduction()) {
+    return 'http://api:8080'; // Docker container-to-container communication
+  }
+  // Server-side in local dev or client-side: use public URL
+  return import.meta.env.PUBLIC_API_URL || '/api';
+};
+
+const API_BASE = getApiBase();
 
 export type RequestOptions = {
   headers?: Record<string, string>;
@@ -21,6 +42,7 @@ async function request<T>(
   path: string,
   body?: unknown,
   opts?: RequestOptions,
+  retry = true,
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -34,6 +56,23 @@ async function request<T>(
     credentials: 'include',
     signal: opts?.signal,
   });
+
+  // If unauthorized and retry is enabled, try to refresh token
+  if (res.status === 401 && retry) {
+    try {
+      // Call refresh endpoint - it will set new cookies automatically
+      await fetch(`${API_BASE}/v1/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      // Retry the original request
+      return request<T>(method, path, body, opts, false);
+    } catch {
+      // Refresh failed, redirect to login
+      window.location.href = '/login';
+      throw new ApiError(401, 'Session expired');
+    }
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));

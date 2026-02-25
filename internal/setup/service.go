@@ -17,7 +17,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-var slugRegex = regexp.MustCompile(`^[a-z0-9_]{3,50}$`)
+var slugRegex = regexp.MustCompile(`^[a-z0-9_-]{3,50}$`)
 
 type Service struct {
 	db           *bun.DB
@@ -88,9 +88,9 @@ func (s *Service) Initialize(ctx context.Context, req *InitializeReq) (*Initiali
 		return nil, apperror.Conflict("system already installed", nil)
 	}
 	if !slugRegex.MatchString(req.SiteSlug) {
-		return nil, apperror.Validation("invalid site slug: must match ^[a-z0-9_]{3,50}$", nil)
+		return nil, apperror.Validation("invalid site slug: must match ^[a-z0-9_-]{3,50}$", nil)
 	}
-	passwordHash, err := crypto.HashPassword(req.AdminPassword)
+	passwordHash, err := crypto.HashPassword(req.SuperPassword)
 	if err != nil {
 		return nil, apperror.Internal("hash password failed", err)
 	}
@@ -117,9 +117,9 @@ func (s *Service) Initialize(ctx context.Context, req *InitializeReq) (*Initiali
 			}
 		}
 		user = model.User{
-			Email:        req.AdminEmail,
+			Email:        req.SuperEmail,
 			PasswordHash: passwordHash,
-			DisplayName:  req.AdminDisplayName,
+			DisplayName:  req.SuperName,
 			Status:       model.UserStatusActive,
 		}
 		if _, err := tx.NewInsert().Model(&user).Exec(ctx); err != nil {

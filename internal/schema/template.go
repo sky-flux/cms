@@ -46,7 +46,7 @@ CREATE TABLE {schema}.sfc_site_posts (
 CREATE UNIQUE INDEX idx_sfc_site_posts_slug      ON {schema}.sfc_site_posts(slug) WHERE deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_posts_author           ON {schema}.sfc_site_posts(author_id);
 CREATE INDEX idx_sfc_site_posts_status           ON {schema}.sfc_site_posts(status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_sfc_site_posts_published        ON {schema}.sfc_site_posts(published_at DESC)
+CREATE INDEX idx_sfc_site_posts_published        ON {schema}.sfc_site_posts(published_at)
     WHERE status = 3 AND deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_posts_extra            ON {schema}.sfc_site_posts USING gin(extra_fields);
 CREATE INDEX idx_sfc_site_posts_scheduled        ON {schema}.sfc_site_posts(scheduled_at) WHERE status = 2;
@@ -83,7 +83,7 @@ CREATE TABLE {schema}.sfc_site_post_revisions (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_sfc_site_revisions_post   ON {schema}.sfc_site_post_revisions(post_id, version DESC);
+CREATE INDEX idx_sfc_site_revisions_post   ON {schema}.sfc_site_post_revisions(post_id, version);
 CREATE INDEX idx_sfc_site_revisions_editor ON {schema}.sfc_site_post_revisions(editor_id);
 
 -- 5. 分类表（Materialized Path）
@@ -189,7 +189,7 @@ CREATE INDEX idx_sfc_site_comments_post_status ON {schema}.sfc_site_comments(pos
     WHERE deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_comments_parent      ON {schema}.sfc_site_comments(parent_id)
     WHERE parent_id IS NOT NULL;
-CREATE INDEX idx_sfc_site_comments_moderation  ON {schema}.sfc_site_comments(status, created_at DESC)
+CREATE INDEX idx_sfc_site_comments_moderation  ON {schema}.sfc_site_comments(status, created_at)
     WHERE status = 1 AND deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_comments_email       ON {schema}.sfc_site_comments(author_email);
 CREATE INDEX idx_sfc_site_comments_user        ON {schema}.sfc_site_comments(user_id)
@@ -247,7 +247,7 @@ CREATE TABLE {schema}.sfc_site_redirects (
 
 CREATE INDEX idx_sfc_site_redirects_source ON {schema}.sfc_site_redirects(source_path)
     WHERE status = 1;
-CREATE INDEX idx_sfc_site_redirects_created ON {schema}.sfc_site_redirects(created_at DESC);
+CREATE INDEX idx_sfc_site_redirects_created ON {schema}.sfc_site_redirects(created_at);
 
 -- 14. 草稿预览令牌表
 CREATE TABLE {schema}.sfc_site_preview_tokens (
@@ -260,8 +260,7 @@ CREATE TABLE {schema}.sfc_site_preview_tokens (
 );
 
 CREATE INDEX idx_sfc_site_preview_tokens_post    ON {schema}.sfc_site_preview_tokens(post_id);
-CREATE INDEX idx_sfc_site_preview_tokens_hash    ON {schema}.sfc_site_preview_tokens(token_hash)
-    WHERE expires_at > NOW();
+CREATE INDEX idx_sfc_site_preview_tokens_hash    ON {schema}.sfc_site_preview_tokens(token_hash);
 CREATE INDEX idx_sfc_site_preview_tokens_expires ON {schema}.sfc_site_preview_tokens(expires_at);
 
 -- 15. API Key 表

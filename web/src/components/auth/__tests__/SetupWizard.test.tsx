@@ -19,6 +19,11 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
+  Toaster: () => null,
+}));
+
+vi.mock('@/components/providers/I18nProvider', () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 import { api, ApiError } from '@/lib/api-client';
@@ -154,9 +159,9 @@ describe('SetupWizard', () => {
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/v1/setup/initialize', {
-        admin_display_name: 'Admin',
-        admin_email: 'admin@test.com',
-        admin_password: 'password123',
+        super_name: 'Admin',
+        super_email: 'admin@test.com',
+        super_password: 'password123',
         site_name: 'My Site',
         site_slug: 'my-site',
         site_url: 'https://example.com',

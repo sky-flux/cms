@@ -88,7 +88,7 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	engine.GET("/health", healthHandler(db, rdb, meili, s3Client))
 
 	// ── JWT Manager ──────────────────────────────────────────────
-	jwtMgr := jwt.NewManager(cfg.JWT.Secret, cfg.JWT.AccessExpiry, 5*time.Minute, rdb)
+	jwtMgr := jwt.NewManager(cfg.JWT.Secret, cfg.JWT.AccessExpiry, 5*time.Minute, cfg.JWT.RefreshExpiry, rdb)
 
 	// ── Setup module (repos → service → handler) ─────────────────
 	setupConfigRepo := setup.NewConfigRepo(db)
@@ -158,11 +158,11 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	authPublic.POST("/forgot-password", authHandler.ForgotPassword)
 	authPublic.POST("/reset-password", authHandler.ResetPassword)
 	authPublic.POST("/2fa/validate", authHandler.Validate2FA)
+	authPublic.POST("/logout", authHandler.Logout)
 
 	// Auth protected routes (JWT required)
 	authProtected := v1.Group("/auth")
 	authProtected.Use(middleware.Auth(jwtMgr))
-	authProtected.POST("/logout", authHandler.Logout)
 	authProtected.GET("/me", authHandler.Me)
 	authProtected.PUT("/password", authHandler.ChangePassword)
 	authProtected.POST("/2fa/setup", authHandler.Setup2FA)
@@ -280,7 +280,7 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	// Audit Logs
 	auditRepo := audit.NewAuditRepo(db)
 	auditHandler := audit.NewHandler(auditRepo)
-	siteScoped.GET("/audit-logs", auditHandler.ListAuditLogs)
+	siteScoped.GET("/audit", auditHandler.ListAudit)
 
 	// ── Shared infrastructure clients ───────────────────────────
 	cacheClient := cache.NewClient(rdb)

@@ -20,6 +20,8 @@
   },
   "nav": {
     "dashboard": "仪表盘",
+    "content": "内容管理",
+    "system": "系统管理",
     "posts": "文章",
     "categories": "分类",
     "tags": "标签",
@@ -31,7 +33,7 @@
     "roles": "角色",
     "settings": "设置",
     "apiKeys": "API 密钥",
-    "auditLogs": "审计日志",
+    "audit": "审计日志",
     "sites": "站点"
   },
   "auth": {

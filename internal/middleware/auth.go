@@ -10,36 +10,38 @@ import (
 
 func Auth(jwtMgr *jwt.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Try Authorization header first
 		header := c.GetHeader("Authorization")
-		if header == "" || !strings.HasPrefix(header, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   "missing or invalid authorization header",
-			})
-			return
+		if header != "" && strings.HasPrefix(header, "Bearer ") {
+			tokenStr := strings.TrimPrefix(header, "Bearer ")
+			if claims, err := jwtMgr.Verify(tokenStr); err == nil {
+				if blacklisted, _ := jwtMgr.IsBlacklisted(c.Request.Context(), claims.JTI); !blacklisted {
+					c.Set("user_id", claims.Subject)
+					c.Set("token_jti", claims.JTI)
+					if claims.Purpose != "" {
+						c.Set("token_purpose", claims.Purpose)
+					}
+					c.Next()
+					return
+				}
+			}
 		}
-		tokenStr := strings.TrimPrefix(header, "Bearer ")
-		claims, err := jwtMgr.Verify(tokenStr)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   "invalid or expired token",
-			})
-			return
+
+		// Try access_token cookie
+		if accessToken, err := c.Cookie("access_token"); err == nil {
+			if claims, err := jwtMgr.Verify(accessToken); err == nil {
+				if blacklisted, _ := jwtMgr.IsBlacklisted(c.Request.Context(), claims.JTI); !blacklisted {
+					c.Set("user_id", claims.Subject)
+					c.Set("token_jti", claims.JTI)
+					c.Next()
+					return
+				}
+			}
 		}
-		blacklisted, err := jwtMgr.IsBlacklisted(c.Request.Context(), claims.JTI)
-		if err != nil || blacklisted {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   "token has been revoked",
-			})
-			return
-		}
-		c.Set("user_id", claims.Subject)
-		c.Set("token_jti", claims.JTI)
-		if claims.Purpose != "" {
-			c.Set("token_purpose", claims.Purpose)
-		}
-		c.Next()
+
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   "missing or invalid token",
+		})
 	}
 }

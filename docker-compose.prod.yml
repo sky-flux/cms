@@ -1,46 +1,250 @@
-# 生产环境 — docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Production environment - docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# 前置条件: .env 中必须设置强密码 (DB_PASSWORD / REDIS_PASSWORD / MEILI_MASTER_KEY)
-# 基础设施端口不对外暴露，仅通过 Docker 内部网络访问
+# Docker Secrets (defined at bottom):
+# - db_password, redis_password, jwt_secret, totp_key
+# - meili_master_key, rustfs_access_key, rustfs_secret_key, resend_api_key
+#
+# Prerequisites:
+# - Create Docker secret files in /run/secrets/ or use echo | docker secret create
+# - All secrets use *_FILE pattern for environment variables
+# - Infrastructure ports not exposed externally, only via Docker internal network
 services:
-  server:
+  postgres:
+    image: postgres:18-alpine
+    container_name: cms-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cms}
+      POSTGRES_USER: ${DB_USER:-cms_user}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    secrets:
+      - db_password
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1536M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cms_user} -d ${DB_NAME:-cms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    container_name: cms-redis-prod
+    restart: unless-stopped
+    command: >
+      sh -c 'redis-server
+      --requirepass "$$(cat /run/secrets/redis_password)"
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes'
+    volumes:
+      - redis_data:/data
+    secrets:
+      - redis_password
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/redis_password)\" ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.13
+    container_name: cms-meilisearch-prod
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY_FILE: /run/secrets/meili_master_key
+    volumes:
+      - meili_data:/meili_data
+    secrets:
+      - meili_master_key
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: cms-rustfs-prod
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY_FILE: /run/secrets/rustfs_access_key
+      RUSTFS_SECRET_KEY_FILE: /run/secrets/rustfs_secret_key
+    command: /data
+    volumes:
+      - rustfs_data:/data
+    secrets:
+      - rustfs_access_key
+      - rustfs_secret_key
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -so /dev/null -w '%{http_code}' http://localhost:9000/ | grep -q 403"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cms-server
-    env_file: .env
-    ports:
-      - "${SERVER_PORT:-8080}:8080"
+    container_name: cms-api-prod
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    restart: unless-stopped
+      meilisearch:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    environment:
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-cms}
+      DB_USER: ${DB_USER:-cms_user}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+
+      # JWT
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+
+      # TOTP
+      TOTP_KEY_FILE: /run/secrets/totp_key
+
+      # Meilisearch
+      MEILI_HOST: meilisearch
+      MEILI_PORT: 7700
+      MEILI_MASTER_KEY_FILE: /run/secrets/meili_master_key
+
+      # RustFS
+      RUSTFS_ENDPOINT: http://rustfs:9000
+      RUSTFS_BUCKET: cms-media
+      RUSTFS_ACCESS_KEY_FILE: /run/secrets/rustfs_access_key
+      RUSTFS_SECRET_KEY_FILE: /run/secrets/rustfs_secret_key
+
+      # Resend
+      RESEND_API_KEY_FILE: /run/secrets/resend_api_key
+      RESEND_FROM_NAME: ${RESEND_FROM_NAME:-Sky Flux CMS}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@example.com}
+
+      # Server
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+
+      # Auto-run migrations on startup
+      AUTO_MIGRATE: "true"
+
+      # Auto-setup (optional - set SEED_* vars to auto-create initial site and admin)
+      # AUTO_SETUP: "true"
+      # SEED_SITE_NAME: "My Site"
+      # SEED_SITE_SLUG: "my-site"
+      # SEED_SITE_URL: "https://example.com"
+      # SEED_SUPER_EMAIL: "admin@example.com"
+      # SEED_SUPER_PASSWORD: "change-me"
+      # SEED_SUPER_NAME: "Administrator"
+
+      # Frontend URL for email links
+      FRONTEND_URL: ${FRONTEND_URL:-https://example.com}
+    secrets:
+      - db_password
+      - redis_password
+      - jwt_secret
+      - totp_key
+      - meili_master_key
+      - rustfs_access_key
+      - rustfs_secret_key
+      - resend_api_key
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
 
   web:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: cms-web
-    environment:
-      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://server:8080}
-    ports:
-      - "${WEB_PORT:-3000}:3000"
+      args:
+        PUBLIC_API_URL: /api
+    container_name: cms-web-prod
+    restart: unless-stopped
     depends_on:
-      - server
-    restart: unless-stopped
-
-  postgres:
-    restart: unless-stopped
-
-  redis:
-    restart: unless-stopped
-
-  meilisearch:
+      - api
     environment:
-      MEILI_ENV: production
-    restart: unless-stopped
+      PUBLIC_API_URL: /api
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
 
-  rustfs:
+  caddy:
+    image: caddy:2.11.1-alpine
+    container_name: cms-caddy-prod
     restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+volumes:
+  postgres_data:
+  redis_data:
+  meili_data:
+  rustfs_data:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password
+  redis_password:
+    file: ./secrets/redis_password
+  jwt_secret:
+    file: ./secrets/jwt_secret
+  totp_key:
+    file: ./secrets/totp_key
+  meili_master_key:
+    file: ./secrets/meili_master_key
+  rustfs_access_key:
+    file: ./secrets/rustfs_access_key
+  rustfs_secret_key:
+    file: ./secrets/rustfs_secret_key
+  resend_api_key:
+    file: ./secrets/resend_api_key

@@ -629,227 +629,119 @@ volumes:
   media_files:
 ```
 
-### 5.2 Nginx 配置
+### 5.2 Caddy 反向代理
 
-```nginx
-# nginx/conf.d/cms.conf
+Caddy 作为统一入口，自动处理 HTTPS 和安全头配置。
 
-# HTTP -> HTTPS 重定向
-server {
-    listen 80;
-    listen [::]:80;
-    server_name cms.example.com;
-    return 301 https://$server_name$request_uri;
+#### 开发环境
+
+`Caddyfile`:
+
+```caddyfile
+:8000 {
+    reverse_proxy /api/* backend:8080
+    reverse_proxy /feed/* backend:8080
+    reverse_proxy /sitemap* backend:8080
+    reverse_proxy /_astro/* frontend:3000
+    reverse_proxy /* frontend:3000
+}
+```
+
+#### 生产环境
+
+`Caddyfile.production`:
+
+```caddyfile
+{
+    email admin@{$DOMAIN}
+    admin off
 }
 
-# 速率限制
-limit_req_zone $binary_remote_addr zone=api_limit:10m rate=30r/s;
-limit_req_zone $binary_remote_addr zone=login_limit:10m rate=20r/m;
-limit_req_zone $binary_remote_addr zone=setup_limit:10m rate=5r/m;
-
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name cms.example.com;
-
-    # ========== SSL/TLS 配置 ==========
-    ssl_certificate     /etc/nginx/certs/fullchain.pem;
-    ssl_certificate_key /etc/nginx/certs/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-    ssl_session_cache   shared:SSL:10m;
-    ssl_session_timeout 10m;
-
-    # ========== 安全头 ==========
-    # CSP 统一在 Nginx 层配置，后端不重复设置（见 security.md）
-    # CORS/CSP 策略详见 security.md，此处配置应与其保持一致
-    # CORS 由 Gin 中间件处理（security.md §5.4），Nginx 不重复设置 CORS 头
-    # 允许的 Origins 列表维护在 .env 的 CORS_ALLOWED_ORIGINS 中
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "0" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    # CSP 指令与 security.md §9.2 保持一致，修改时需同步更新两处
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.example.com; font-src 'self'; connect-src 'self' https://api.example.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" always;
-
-    # ========== Gzip 压缩 ==========
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types
-        text/plain
-        text/css
-        text/javascript
-        text/xml
-        application/javascript
-        application/json
-        application/xml
-        application/rss+xml
-        application/atom+xml
-        image/svg+xml;
-
-    # ========== 媒体文件（静态缓存） ==========
-    location /media/ {
-        alias /var/www/media/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-
-        # 防盗链（可选）
-        valid_referers none blocked cms.example.com;
-        if ($invalid_referer) {
-            return 403;
-        }
+{$DOMAIN} {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
     }
 
-    # ========== RSS/Atom Feed 缓存 ==========
-    location /feed/ {
-        proxy_pass http://backend:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        proxy_cache_valid 200 1h;
-        add_header Cache-Control "public, max-age=3600";
-        access_log off;
+    # Enable Gzip compression
+    encode {
+        gzip 6
+        minimum_length 512
     }
 
-    # ========== Sitemap 缓存 ==========
-    location ~ ^/sitemap.*\.xml$ {
-        proxy_pass http://backend:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        proxy_cache_valid 200 1h;
-        add_header Cache-Control "public, max-age=3600";
-        access_log off;
+    # Static assets - 1 year immutable cache
+    @staticAssets {
+        path /_astro/*
+    }
+    handle @staticAssets {
+        header Cache-Control "public, max-age=31536000, immutable"
+        reverse_proxy frontend:3000
     }
 
-    # ========== API 反向代理 ==========
-    location /api/ {
-        limit_req zone=api_limit burst=20 nodelay;
-
-        proxy_pass http://backend:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # 文件上传大小
-        client_max_body_size 100m;
-
-        # 超时设置
-        proxy_connect_timeout 10s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
+    # RSS/Sitemap - 1 hour cache
+    @feedCache {
+        path /feed/*
+    }
+    handle @feedCache {
+        header Cache-Control "public, max-age=3600"
+        reverse_proxy backend:8080
     }
 
-    # ========== 登录接口限流加强 ==========
-    location /api/v1/auth/login {
-        limit_req zone=login_limit burst=3 nodelay;
-
-        proxy_pass http://backend:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+    @sitemapCache {
+        path /sitemap*
+    }
+    handle @sitemapCache {
+        header Cache-Control "public, max-age=3600"
+        reverse_proxy backend:8080
     }
 
-    # ========== 安装向导接口限流 ==========
-    location /api/v1/setup/ {
-        limit_req zone=setup_limit burst=2 nodelay;
-
-        proxy_pass http://backend:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+    # API - no caching, proxy to backend
+    @api {
+        path /api/*
+    }
+    handle @api {
+        reverse_proxy backend:8080
     }
 
-    # ========== 健康检查（内部） ==========
-    location /health {
-        proxy_pass http://backend:8080/health;
-        access_log off;
-    }
-
-    # ========== 前端 SSR ==========
-    location / {
-        proxy_pass http://frontend:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # SSR 页面不缓存
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-
-    # ========== 前端静态资源 ==========
-    location /_astro/ {
-        proxy_pass http://frontend:3000;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
+    # Default - proxy to frontend SSR
+    handle {
+        reverse_proxy frontend:3000
     }
 }
 ```
 
-#### 多域名多站点 Nginx 配置（可选）
+**优势:**
 
-当运行多个站点且每个站点有独立域名时，可使用如下模式。后端通过 `Host` 头自动解析站点并设置对应的 `search_path`：
+- **自动 HTTPS**: Caddy 自动获取和续期 Let's Encrypt 证书，无需手动配置
+- **安全头**: 内置所有安全头配置，无需额外设置
+- **零停机**: 配置更改自动重载，不影响服务
+- **简洁配置**: 相比 Nginx，配置文件更简洁易懂
 
-```nginx
-# nginx/conf.d/multi-site.conf
-# 所有站点域名共用同一个 server block，由后端 SiteResolverMiddleware 根据 Host 解析站点
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+### 5.3 GitHub Actions CI/CD
 
-    # 列出所有站点域名
-    server_name blog.example.com docs.example.com store.example.com;
+#### 工作流触发
 
-    # SSL 证书（推荐使用通配符证书或 SAN 证书覆盖所有域名）
-    ssl_certificate     /etc/nginx/certs/wildcard.pem;
-    ssl_certificate_key /etc/nginx/certs/wildcard-key.pem;
+- **PR to main**: 仅运行测试
+- **Push to main**: 测试 + 构建 + 推送 GHCR
+- **Tag push**: 测试 + 构建 + 推送 GHCR
 
-    # 其余配置与主 server block 一致
-    # ...（安全头、Gzip、API 代理等，同上）
-}
-```
+#### 镜像标签
 
-### 5.3 SSL/TLS 证书配置
+- `latest`: 最新 main 分支
+- `<branch>`: 分支名 (如 `main-backend`)
+- `<sha>`: Git commit SHA
 
-使用 Let's Encrypt 免费证书：
+#### 镜像仓库
 
-```bash
-# 安装 certbot
-sudo apt install certbot python3-certbot-nginx   # Debian/Ubuntu
-sudo dnf install certbot python3-certbot-nginx    # RHEL/Fedora
+- 后端: `ghcr.io/sky-flux/cms-backend:latest`
+- 前端: `ghcr.io/sky-flux/cms-frontend:latest`
 
-# 首次申请证书（需先确保 Nginx 已启动且域名 DNS 已解析）
-sudo certbot certonly --webroot \
-    -w /var/www/certbot \
-    -d cms.example.com \
-    --agree-tos \
-    --email admin@example.com
-
-# 证书文件位置
-# /etc/letsencrypt/live/cms.example.com/fullchain.pem
-# /etc/letsencrypt/live/cms.example.com/privkey.pem
-
-# 复制到项目 certs 目录
-sudo cp /etc/letsencrypt/live/cms.example.com/fullchain.pem ./certs/
-sudo cp /etc/letsencrypt/live/cms.example.com/privkey.pem ./certs/
-
-# 自动续期（certbot 默认已配置 systemd timer）
-sudo certbot renew --dry-run
-```
+详见 `.github/workflows/ci.yml`。
 
 ### 5.4 部署流程
 

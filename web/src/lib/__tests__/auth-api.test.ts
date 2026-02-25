@@ -84,9 +84,9 @@ describe('authApi', () => {
         site_name: 'My Site',
         site_slug: 'my-site',
         site_url: 'https://example.com',
-        admin_email: 'a@b.com',
-        admin_password: 'pass1234',
-        admin_display_name: 'Admin',
+        super_email: 'a@b.com',
+        super_password: 'pass1234',
+        super_name: 'Admin',
         locale: 'en',
       };
       vi.mocked(api.post).mockResolvedValue({ success: true, data: {} });

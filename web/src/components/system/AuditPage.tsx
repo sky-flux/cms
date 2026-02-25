@@ -27,7 +27,7 @@ function AuditPageInner() {
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit-logs', queryParams],
+    queryKey: ['audit', queryParams],
     queryFn: () => auditApi.list(queryParams),
   });
 

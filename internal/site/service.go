@@ -10,7 +10,7 @@ import (
 	"github.com/sky-flux/cms/internal/pkg/apperror"
 )
 
-var slugRegex = regexp.MustCompile(`^[a-z0-9_]{3,50}$`)
+var slugRegex = regexp.MustCompile(`^[a-z0-9_-]{3,50}$`)
 
 type Service struct {
 	siteRepo     SiteRepository
@@ -52,7 +52,7 @@ func (s *Service) GetSite(ctx context.Context, slug string) (*model.Site, error)
 
 func (s *Service) CreateSite(ctx context.Context, req *CreateSiteReq) (*model.Site, error) {
 	if !slugRegex.MatchString(req.Slug) {
-		return nil, apperror.Validation("invalid slug: must match ^[a-z0-9_]{3,50}$", nil)
+		return nil, apperror.Validation("invalid slug: must match ^[a-z0-9_-]{3,50}$", nil)
 	}
 
 	exists, err := s.siteRepo.SlugExists(ctx, req.Slug)

@@ -20,7 +20,8 @@ func CreateSiteSchema(ctx context.Context, db bun.IDB, slug string) error {
 		return fmt.Errorf("invalid site slug: %q", slug)
 	}
 
-	schemaName := "site_" + slug
+	// Convert hyphen to underscore for schema name (PostgreSQL schema names don't support hyphens)
+	schemaName := "site_" + strings.ReplaceAll(slug, "-", "_")
 
 	// If the caller already provided a transaction, execute DDL directly on it.
 	if tx, ok := db.(bun.Tx); ok {
@@ -73,7 +74,8 @@ func DropSiteSchema(ctx context.Context, db bun.IDB, slug string) error {
 		return fmt.Errorf("invalid site slug: %q", slug)
 	}
 
-	schemaName := "site_" + slug
+	// Convert hyphen to underscore for schema name (PostgreSQL schema names don't support hyphens)
+	schemaName := "site_" + strings.ReplaceAll(slug, "-", "_")
 	_, err := db.ExecContext(ctx, fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", bun.Ident(schemaName)))
 	if err != nil {
 		return fmt.Errorf("drop schema %s: %w", schemaName, err)
@@ -105,10 +107,11 @@ func createAuditPartitions(ctx context.Context, tx bun.Tx, schemaName string) er
 	}
 
 	// Create audit indexes (these are on the parent, PG propagates to partitions)
+	// Note: Avoid DESC in partition table indexes as it may cause IMMUTABLE function errors
 	indexes := []string{
-		fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_sfc_site_audits_actor ON %s.sfc_site_audits(actor_id, created_at DESC)", schemaName),
+		fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_sfc_site_audits_actor ON %s.sfc_site_audits(actor_id, created_at)", schemaName),
 		fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_sfc_site_audits_resource ON %s.sfc_site_audits(resource_type, resource_id)", schemaName),
-		fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_sfc_site_audits_time ON %s.sfc_site_audits(created_at DESC)", schemaName),
+		fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_sfc_site_audits_time ON %s.sfc_site_audits(created_at)", schemaName),
 	}
 	for _, idx := range indexes {
 		if _, err := tx.ExecContext(ctx, idx); err != nil {

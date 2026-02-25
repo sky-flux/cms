@@ -38,7 +38,7 @@ func setupRouter(repo audit.AuditRepository) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	h := audit.NewHandler(repo)
 	r := gin.New()
-	r.GET("/audit-logs", h.ListAuditLogs)
+	r.GET("/audit", h.ListAudit)
 	return r
 }
 
@@ -70,14 +70,14 @@ func testAuditItem() audit.AuditWithActor {
 // Tests: Default pagination
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_DefaultPagination(t *testing.T) {
+func TestHandler_ListAudit_DefaultPagination(t *testing.T) {
 	repo := &mockAuditRepo{
 		items: []audit.AuditWithActor{testAuditItem()},
 		total: 1,
 	}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs")
+	w := doGet(r, "/audit")
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var resp map[string]interface{}
@@ -94,14 +94,14 @@ func TestHandler_ListAuditLogs_DefaultPagination(t *testing.T) {
 // Tests: With filters
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_WithFilters(t *testing.T) {
+func TestHandler_ListAudit_WithFilters(t *testing.T) {
 	repo := &mockAuditRepo{
 		items: []audit.AuditWithActor{testAuditItem()},
 		total: 1,
 	}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs?page=2&per_page=5&actor_id=actor-1&action=1&resource_type=post&start_date=2026-01-01T00:00:00Z&end_date=2026-12-31T23:59:59Z")
+	w := doGet(r, "/audit?page=2&per_page=5&actor_id=actor-1&action=1&resource_type=post&start_date=2026-01-01T00:00:00Z&end_date=2026-12-31T23:59:59Z")
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var resp map[string]interface{}
@@ -117,19 +117,19 @@ func TestHandler_ListAuditLogs_WithFilters(t *testing.T) {
 // Tests: Invalid action returns 422
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_InvalidAction(t *testing.T) {
+func TestHandler_ListAudit_InvalidAction(t *testing.T) {
 	repo := &mockAuditRepo{}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs?action=99")
+	w := doGet(r, "/audit?action=99")
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 }
 
-func TestHandler_ListAuditLogs_ActionNotNumber(t *testing.T) {
+func TestHandler_ListAudit_ActionNotNumber(t *testing.T) {
 	repo := &mockAuditRepo{}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs?action=abc")
+	w := doGet(r, "/audit?action=abc")
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 }
 
@@ -137,19 +137,19 @@ func TestHandler_ListAuditLogs_ActionNotNumber(t *testing.T) {
 // Tests: Invalid date returns 422
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_InvalidStartDate(t *testing.T) {
+func TestHandler_ListAudit_InvalidStartDate(t *testing.T) {
 	repo := &mockAuditRepo{}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs?start_date=not-a-date")
+	w := doGet(r, "/audit?start_date=not-a-date")
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 }
 
-func TestHandler_ListAuditLogs_InvalidEndDate(t *testing.T) {
+func TestHandler_ListAudit_InvalidEndDate(t *testing.T) {
 	repo := &mockAuditRepo{}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs?end_date=not-a-date")
+	w := doGet(r, "/audit?end_date=not-a-date")
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 }
 
@@ -157,14 +157,14 @@ func TestHandler_ListAuditLogs_InvalidEndDate(t *testing.T) {
 // Tests: PerPage cap at 100
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_PerPageCapped(t *testing.T) {
+func TestHandler_ListAudit_PerPageCapped(t *testing.T) {
 	repo := &mockAuditRepo{
 		items: nil,
 		total: 0,
 	}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs?per_page=999")
+	w := doGet(r, "/audit?per_page=999")
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var resp map[string]interface{}
@@ -177,13 +177,13 @@ func TestHandler_ListAuditLogs_PerPageCapped(t *testing.T) {
 // Tests: Repo error
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_RepoError(t *testing.T) {
+func TestHandler_ListAudit_RepoError(t *testing.T) {
 	repo := &mockAuditRepo{
 		err: errors.New("db connection lost"),
 	}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs")
+	w := doGet(r, "/audit")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
@@ -191,14 +191,14 @@ func TestHandler_ListAuditLogs_RepoError(t *testing.T) {
 // Tests: Empty results
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_EmptyResults(t *testing.T) {
+func TestHandler_ListAudit_EmptyResults(t *testing.T) {
 	repo := &mockAuditRepo{
 		items: []audit.AuditWithActor{},
 		total: 0,
 	}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs")
+	w := doGet(r, "/audit")
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var resp map[string]interface{}
@@ -211,14 +211,14 @@ func TestHandler_ListAuditLogs_EmptyResults(t *testing.T) {
 // Tests: Response structure
 // ---------------------------------------------------------------------------
 
-func TestHandler_ListAuditLogs_ResponseStructure(t *testing.T) {
+func TestHandler_ListAudit_ResponseStructure(t *testing.T) {
 	repo := &mockAuditRepo{
 		items: []audit.AuditWithActor{testAuditItem()},
 		total: 1,
 	}
 	r := setupRouter(repo)
 
-	w := doGet(r, "/audit-logs")
+	w := doGet(r, "/audit")
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var resp map[string]interface{}

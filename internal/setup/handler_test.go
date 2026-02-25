@@ -29,7 +29,7 @@ func TestInitializeReq_Validation(t *testing.T) {
 			name: "invalid email",
 			body: map[string]string{
 				"site_name": "Blog", "site_slug": "blog", "site_url": "https://blog.com",
-				"admin_email": "not-an-email", "admin_password": "Pass123!", "admin_display_name": "Admin",
+				"super_email": "not-an-email", "super_password": "Pass123!", "super_name": "Admin",
 			},
 			code: 422,
 		},
@@ -37,7 +37,7 @@ func TestInitializeReq_Validation(t *testing.T) {
 			name: "password too short",
 			body: map[string]string{
 				"site_name": "Blog", "site_slug": "blog", "site_url": "https://blog.com",
-				"admin_email": "a@b.com", "admin_password": "short", "admin_display_name": "Admin",
+				"super_email": "a@b.com", "super_password": "short", "super_name": "Admin",
 			},
 			code: 422,
 		},

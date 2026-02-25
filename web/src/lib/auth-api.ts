@@ -23,9 +23,9 @@ export interface SetupInstallPayload {
   site_name: string;
   site_slug: string;
   site_url: string;
-  admin_email: string;
-  admin_password: string;
-  admin_display_name: string;
+  super_email: string;
+  super_password: string;
+  super_name: string;
   locale?: string;
 }
 

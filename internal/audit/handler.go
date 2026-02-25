@@ -18,7 +18,7 @@ func NewHandler(repo AuditRepository) *Handler {
 	return &Handler{repo: repo}
 }
 
-func (h *Handler) ListAuditLogs(c *gin.Context) {
+func (h *Handler) ListAudit(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "20"))
 

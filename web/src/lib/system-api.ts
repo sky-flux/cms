@@ -306,7 +306,7 @@ export interface AuditListParams {
 
 export const auditApi = {
   list: (params: AuditListParams, opts?: RequestOptions) =>
-    api.get<PaginatedResponse<AuditLog>>(`/v1/site/audit-logs${buildQuery(params)}`, opts),
+    api.get<PaginatedResponse<AuditLog>>(`/v1/site/audit${buildQuery(params)}`, opts),
 };
 
 // --- Comments ---

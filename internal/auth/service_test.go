@@ -210,7 +210,7 @@ func newHarnessWithMailer(t *testing.T, mailer *mockMailer) *testHarness {
 
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
-	jwtMgr := jwt.NewManager(testJWTSecret, 15*time.Minute, 5*time.Minute, rdb)
+	jwtMgr := jwt.NewManager(testJWTSecret, 15*time.Minute, 5*time.Minute, 7*24*time.Hour, rdb)
 
 	userRepo := &mockUserRepo{}
 	tokenRepo := &mockTokenRepo{}

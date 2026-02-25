@@ -4,11 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { I18nProvider } from '@/components/providers/I18nProvider';
 import { api, ApiError } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/auth-store';
 import type { LoginSuccessData, Login2FAData } from '@/lib/auth-api';
@@ -21,7 +22,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+function LoginFormInner() {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -38,7 +39,9 @@ export function LoginForm() {
     try {
       const resp = await api.post<{
         success: boolean;
-        data: LoginSuccessData | Login2FAData;
+        data: {
+          user: { id: string; email: string; display_name: string };
+        } | Login2FAData;
       }>('/v1/auth/login', {
         email: values.email,
         password: values.password,
@@ -49,16 +52,8 @@ export function LoginForm() {
         return;
       }
 
-      const data = resp.data as LoginSuccessData;
-      setAuth(
-        {
-          id: data.user.id,
-          email: data.user.email,
-          displayName: data.user.display_name,
-          avatarUrl: '',
-        },
-        data.access_token,
-      );
+      // Tokens are now in httpOnly cookies, just redirect to dashboard
+      // The middleware will validate the cookie and allow access
       window.location.href = '/dashboard';
     } catch (err) {
       if (err instanceof ApiError) {
@@ -132,5 +127,14 @@ export function LoginForm() {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+export function LoginForm() {
+  return (
+    <I18nProvider>
+      <LoginFormInner />
+      <Toaster />
+    </I18nProvider>
   );
 }

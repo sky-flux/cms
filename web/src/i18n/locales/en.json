@@ -20,6 +20,8 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "content": "Content",
+    "system": "System",
     "posts": "Posts",
     "categories": "Categories",
     "tags": "Tags",
@@ -31,7 +33,7 @@
     "roles": "Roles",
     "settings": "Settings",
     "apiKeys": "API Keys",
-    "auditLogs": "Audit Logs",
+    "audit": "Audit Logs",
     "sites": "Sites"
   },
   "auth": {

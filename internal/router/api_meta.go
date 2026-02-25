@@ -75,7 +75,7 @@ func BuildAPIMetaMap() map[string]rbac.APIMeta {
 		"DELETE:/api/v1/site/post-types/:id": {Name: "Delete post type", Description: "Delete a content type", Group: "post-types"},
 
 		// Site-scoped: Audit Logs
-		"GET:/api/v1/site/audit-logs": {Name: "List audit logs", Description: "Query audit trail", Group: "audit"},
+		"GET:/api/v1/site/audit": {Name: "List audit logs", Description: "Query audit trail", Group: "audit"},
 
 		// Site-scoped: Categories
 		"GET:/api/v1/site/categories":         {Name: "List categories", Description: "List category tree", Group: "categories"},

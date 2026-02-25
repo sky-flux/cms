@@ -4,11 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { I18nProvider } from '@/components/providers/I18nProvider';
 import { api, ApiError } from '@/lib/api-client';
 
 const schema = z.object({
@@ -25,7 +26,7 @@ interface ResetPasswordFormProps {
   token: string;
 }
 
-export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
+function ResetPasswordFormInner({ token }: ResetPasswordFormProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -107,5 +108,14 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
+  return (
+    <I18nProvider>
+      <ResetPasswordFormInner token={token} />
+      <Toaster />
+    </I18nProvider>
   );
 }

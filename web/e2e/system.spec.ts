@@ -94,7 +94,7 @@ test.describe.serial('System Management', () => {
 
   test.fixme('audit logs page loads', async ({ page }) => {
     await loginViaAPI(page, TEST_ADMIN.email, TEST_ADMIN.password);
-    await page.goto('/dashboard/audit-logs');
+    await page.goto('/dashboard/audit');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 

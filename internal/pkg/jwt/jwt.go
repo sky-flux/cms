@@ -10,6 +10,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	PurposeAccess  = ""
+	PurposeRefresh = "refresh"
+	Purpose2FA     = "2fa"
+	PurposeReset   = "reset_password"
+)
+
 type Claims struct {
 	Subject string
 	JTI     string
@@ -22,23 +29,29 @@ type registeredClaims struct {
 }
 
 type Manager struct {
-	secret    []byte
-	accessTTL time.Duration
-	tempTTL   time.Duration
-	rdb       *redis.Client
+	secret       []byte
+	accessTTL    time.Duration
+	tempTTL      time.Duration
+	refreshTTL   time.Duration
+	rdb          *redis.Client
 }
 
-func NewManager(secret string, accessTTL, tempTTL time.Duration, rdb *redis.Client) *Manager {
+func NewManager(secret string, accessTTL, tempTTL, refreshTTL time.Duration, rdb *redis.Client) *Manager {
 	return &Manager{
-		secret:    []byte(secret),
-		accessTTL: accessTTL,
-		tempTTL:   tempTTL,
-		rdb:       rdb,
+		secret:     []byte(secret),
+		accessTTL:  accessTTL,
+		tempTTL:    tempTTL,
+		refreshTTL: refreshTTL,
+		rdb:        rdb,
 	}
 }
 
 func (m *Manager) SignAccessToken(userID string) (string, error) {
 	return m.sign(userID, "", m.accessTTL)
+}
+
+func (m *Manager) SignRefreshToken(userID, jti string) (string, error) {
+	return m.sign(userID, jti, m.refreshTTL)
 }
 
 func (m *Manager) SignTempToken(userID, purpose string) (string, error) {

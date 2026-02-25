@@ -42,7 +42,7 @@ CREATE TABLE public.sfc_sites (
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     deleted_at      TIMESTAMPTZ,
 
-    CONSTRAINT chk_sfc_sites_slug CHECK (slug ~ '^[a-z0-9_]{3,50}$')
+    CONSTRAINT chk_sfc_sites_slug CHECK (slug ~ '^[a-z0-9_-]{3,50}$')
 );
 
 CREATE INDEX idx_sfc_sites_domain ON public.sfc_sites(domain) WHERE domain IS NOT NULL;

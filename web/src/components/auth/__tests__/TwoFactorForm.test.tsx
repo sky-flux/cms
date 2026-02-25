@@ -31,6 +31,11 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
+  Toaster: () => null,
+}));
+
+vi.mock('@/components/providers/I18nProvider', () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 import { api, ApiError } from '@/lib/api-client';

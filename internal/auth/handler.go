@@ -20,10 +20,22 @@ func NewHandler(svc *Service, refreshExpiry time.Duration) *Handler {
 	return &Handler{svc: svc, refreshExpiry: refreshExpiry}
 }
 
+// setAccessTokenCookie writes or clears the access_token httpOnly cookie.
+func setAccessTokenCookie(c *gin.Context, token string, maxAge int) {
+	// Enable Secure flag when using HTTPS (via X-Forwarded-Proto or in release mode)
+	secure := c.GetHeader("X-Forwarded-Proto") == "https" || gin.Mode() == gin.ReleaseMode
+	c.SetSameSite(http.SameSiteLaxMode)
+	// Use root path "/" so cookie is sent with all requests
+	c.SetCookie("access_token", token, maxAge, "/", "", secure, true)
+}
+
 // setRefreshTokenCookie writes or clears the refresh_token httpOnly cookie.
 func setRefreshTokenCookie(c *gin.Context, token string, maxAge int) {
+	// Enable Secure flag when using HTTPS (via X-Forwarded-Proto or in release mode)
+	secure := c.GetHeader("X-Forwarded-Proto") == "https" || gin.Mode() == gin.ReleaseMode
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("refresh_token", token, maxAge, "/api/v1/auth", "", true, true)
+	// Use root path "/" so cookie is sent with all requests (including /dashboard)
+	c.SetCookie("refresh_token", token, maxAge, "/", "", secure, true)
 }
 
 // Login authenticates a user and returns tokens or a 2FA challenge.
@@ -43,8 +55,13 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	if loginResp != nil {
+		// Set both access_token and refresh_token as httpOnly cookies
+		setAccessTokenCookie(c, loginResp.AccessToken, loginResp.ExpiresIn)
 		setRefreshTokenCookie(c, loginResp.RawRefreshToken, int(h.refreshExpiry.Seconds()))
-		response.Success(c, loginResp)
+		// Return response without tokens in body (they're in cookies now)
+		response.Success(c, gin.H{
+			"user": loginResp.User,
+		})
 		return
 	}
 
@@ -73,14 +90,15 @@ func (h *Handler) Refresh(c *gin.Context) {
 
 // Logout blacklists the access token and revokes the refresh token.
 func (h *Handler) Logout(c *gin.Context) {
-	jti := c.GetString("token_jti")
 	rawRefresh, _ := c.Cookie("refresh_token")
 
-	if err := h.svc.Logout(c.Request.Context(), jti, rawRefresh); err != nil {
+	if err := h.svc.Logout(c.Request.Context(), "", rawRefresh); err != nil {
 		response.Error(c, err)
 		return
 	}
 
+	// Clear both cookies
+	setAccessTokenCookie(c, "", -1)
 	setRefreshTokenCookie(c, "", -1)
 	response.NoContent(c)
 }

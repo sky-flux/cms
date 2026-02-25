@@ -1,13 +1,13 @@
 package setup
 
 type InitializeReq struct {
-	SiteName         string `json:"site_name" binding:"required,max=200"`
-	SiteSlug         string `json:"site_slug" binding:"required,min=3,max=50"`
-	SiteURL          string `json:"site_url" binding:"required,url"`
-	AdminEmail       string `json:"admin_email" binding:"required,email"`
-	AdminPassword    string `json:"admin_password" binding:"required,min=8"`
-	AdminDisplayName string `json:"admin_display_name" binding:"required,max=100"`
-	Locale           string `json:"locale" binding:"omitempty,max=10"`
+	SiteName      string `json:"site_name" binding:"required,max=200"`
+	SiteSlug      string `json:"site_slug" binding:"required,min=3,max=50"`
+	SiteURL       string `json:"site_url" binding:"required,url"`
+	SuperEmail    string `json:"super_email" binding:"required,email"`
+	SuperPassword string `json:"super_password" binding:"required,min=8"`
+	SuperName     string `json:"super_name" binding:"required,max=100"`
+	Locale        string `json:"locale" binding:"omitempty,max=10"`
 }
 
 type CheckResp struct {

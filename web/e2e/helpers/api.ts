@@ -33,9 +33,9 @@ export async function setupInitialize(): Promise<string> {
     success: boolean;
     data: { access_token: string };
   }>('POST', '/api/v1/setup/initialize', {
-    admin_display_name: TEST_SUPER.displayName,
-    admin_email: TEST_SUPER.email,
-    admin_password: TEST_SUPER.password,
+    super_name: TEST_SUPER.displayName,
+    super_email: TEST_SUPER.email,
+    super_password: TEST_SUPER.password,
     site_name: TEST_SITE.name,
     site_slug: TEST_SITE.slug,
     site_url: TEST_SITE.url,

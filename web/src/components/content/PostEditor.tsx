@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCreateBlockNote } from '@blocknote/react';
-import { BlockNoteView } from '@blocknote/shadcn';
 import { toast } from 'sonner';
 import { postsApi, categoriesApi } from '@/lib/content-api';
 import type { UpdatePostDTO, CreatePostDTO } from '@/lib/content-api';
@@ -14,7 +13,23 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
+// Lazy load BlockNote editor view (1MB+)
+const BlockNoteView = lazy(() => import('@blocknote/shadcn').then(m => ({ default: m.BlockNoteView })));
+
+// Load BlockNote CSS globally
 import '@blocknote/shadcn/style.css';
+
+function EditorLoading() {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-center h-[400px] border rounded-lg bg-muted/20">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+      </div>
+    </div>
+  );
+}
 
 interface PostEditorProps {
   mode: 'create' | 'edit';
@@ -226,10 +241,12 @@ export function PostEditor({ mode, postId, onCreated }: PostEditorProps) {
           className="text-2xl font-bold h-14 border-0 border-b rounded-none focus-visible:ring-0 px-0"
         />
         <div className="flex-1 min-h-[400px] border rounded-lg overflow-hidden">
-          <BlockNoteView
-            editor={editor}
-            theme="light"
-          />
+          <Suspense fallback={<EditorLoading />}>
+            <BlockNoteView
+              editor={editor}
+              theme="light"
+            />
+          </Suspense>
         </div>
       </div>
 

@@ -1,0 +1,9 @@
+localhost:3000, localhost:3443 {
+    # Local development with Caddy reverse proxy and HTTPS
+    tls /etc/caddy/certs/localhost.pem /etc/caddy/certs/localhost-key.pem
+    reverse_proxy /api/* api:8080
+    reverse_proxy /feed/* api:8080
+    reverse_proxy /sitemap* api:8080
+    reverse_proxy /_astro/* web:3000
+    reverse_proxy /* web:3000
+}

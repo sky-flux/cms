@@ -1,4 +1,4 @@
-.PHONY: setup dev dev-backend dev-frontend test test-backend test-frontend lint build clean migrate-up migrate-down migrate-status test-perf-smoke test-perf test-perf-public test-all
+.PHONY: setup dev dev-backend dev-frontend test test-backend test-frontend lint build clean migrate-up migrate-down migrate-status test-perf-smoke test-perf test-perf-public test-all docker-build docker-push docker-prod-up docker-prod-down docker-prod-logs docker-local-up docker-local-down docker-local-logs docker-local-reset
 
 # ──────────────────────────────────────
 # 开发环境
@@ -93,3 +93,73 @@ clean:
 reset: clean
 	docker compose down -v
 	$(MAKE) setup
+
+# ──────────────────────────────────────
+# Docker 构建与推送
+# ──────────────────────────────────────
+
+# 构建镜像（使用 BuildKit 并行构建）
+docker-build: docker-build-parallel
+
+docker-push:
+	docker tag cms-backend:latest ghcr.io/sky-flux/cms-backend:latest
+	docker tag cms-frontend:latest ghcr.io/sky-flux/cms-frontend:latest
+	docker push ghcr.io/sky-flux/cms-backend:latest
+	docker push ghcr.io/sky-flux/cms-frontend:latest
+
+docker-prod-up:
+	docker compose -f docker-compose.prod.yml up -d
+
+docker-prod-down:
+	docker compose -f docker-compose.prod.yml down
+
+docker-prod-logs:
+	docker compose -f docker-compose.prod.yml logs -f
+
+# ──────────────────────────────────────
+# 本地 Docker 测试 (完整容器化)
+# ──────────────────────────────────────
+
+docker-local-up:
+	@test -f .env || (echo "Creating .env from .env.example" && cp .env.example .env)
+	docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+	@echo ""
+	@echo "========================================"
+	@echo "🚀 Sky Flux CMS (Local Docker) 启动完成!"
+	@echo "========================================"
+	@echo ""
+	@echo "访问地址 (通过 Caddy 反向代理):"
+	@echo "  前端:   http://localhost:3000"
+	@echo "  API:    http://localhost:3000/api/*"
+	@echo ""
+	@echo "首次访问会自动进入安装向导"
+	@echo ""
+	@echo "查看日志: make docker-local-logs"
+	@echo "停止服务: make docker-local-down"
+	@echo "重置环境: make docker-local-reset"
+	@echo ""
+
+docker-local-down:
+	docker compose -f docker-compose.yml -f docker-compose.local.yml down
+
+docker-local-logs:
+	docker compose -f docker-compose.yml -f docker-compose.local.yml logs -f
+
+docker-local-reset:
+	docker compose -f docker-compose.yml -f docker-compose.local.yml down -v
+	@echo "Volumes 已清理，运行 'make docker-local-up' 重新开始"
+
+# ──────────────────────────────────────
+# Docker 构建（兼容模式）
+# ──────────────────────────────────────
+
+# 并行构建前后端镜像
+docker-build-parallel:
+	@echo "Building backend and frontend in parallel..."
+	$(MAKE) -j2 docker-build-backend docker-build-frontend
+
+docker-build-backend:
+	docker build -t cms-backend:latest .
+
+docker-build-frontend:
+	docker build -t cms-frontend:latest --build-arg PUBLIC_API_URL=/api ./web

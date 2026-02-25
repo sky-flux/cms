@@ -34,7 +34,7 @@ export const adminNavSections: NavSection[] = [
       { label: 'nav.users', href: '/dashboard/users', icon: 'Users' },
       { label: 'nav.roles', href: '/dashboard/roles', icon: 'Shield' },
       { label: 'nav.apiKeys', href: '/dashboard/api-keys', icon: 'Key' },
-      { label: 'nav.auditLogs', href: '/dashboard/audit-logs', icon: 'ClipboardList' },
+      { label: 'nav.audit', href: '/dashboard/audit', icon: 'ClipboardList' },
       { label: 'nav.sites', href: '/dashboard/sites', icon: 'Globe' },
       { label: 'nav.settings', href: '/dashboard/settings', icon: 'Settings' },
     ],

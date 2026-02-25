@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from '@/components/ui/input-otp';
+import { I18nProvider } from '@/components/providers/I18nProvider';
 import { api, ApiError } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/auth-store';
 import type { LoginSuccessData } from '@/lib/auth-api';
@@ -16,7 +17,7 @@ interface TwoFactorFormProps {
   tempToken: string;
 }
 
-export function TwoFactorForm({ tempToken }: TwoFactorFormProps) {
+function TwoFactorFormInner({ tempToken }: TwoFactorFormProps) {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -84,5 +85,14 @@ export function TwoFactorForm({ tempToken }: TwoFactorFormProps) {
         </a>
       </CardContent>
     </Card>
+  );
+}
+
+export function TwoFactorForm({ tempToken }: TwoFactorFormProps) {
+  return (
+    <I18nProvider>
+      <TwoFactorFormInner tempToken={tempToken} />
+      <Toaster />
+    </I18nProvider>
   );
 }

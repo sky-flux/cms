@@ -4,19 +4,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { I18nProvider } from '@/components/providers/I18nProvider';
 import { api, ApiError } from '@/lib/api-client';
 
 // --- Schemas ---
 
 const step1Schema = z.object({
-  admin_display_name: z.string().min(1).max(100),
-  admin_email: z.string().email(),
+  super_name: z.string().min(1).max(100),
+  super_email: z.string().email(),
   password: z.string().min(8),
   confirmPassword: z.string().min(8),
 }).refine((d) => d.password === d.confirmPassword, {
@@ -35,9 +36,9 @@ type Step1Values = z.infer<typeof step1Schema>;
 type Step2Values = z.infer<typeof step2Schema>;
 
 interface FormData {
-  admin_display_name: string;
-  admin_email: string;
-  admin_password: string;
+  super_name: string;
+  super_email: string;
+  super_password: string;
   site_name: string;
   site_slug: string;
   site_url: string;
@@ -51,7 +52,7 @@ function Step1Form({
   onNext,
   t,
 }: {
-  defaultValues: { admin_display_name: string; admin_email: string; password: string; confirmPassword: string };
+  defaultValues: { super_name: string; super_email: string; password: string; confirmPassword: string };
   onNext: (values: Step1Values) => void;
   t: (key: string) => string;
 }) {
@@ -67,29 +68,31 @@ function Step1Form({
   return (
     <form onSubmit={handleSubmit(onNext)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="admin_display_name">{t('auth.setupAdminUsername')}</Label>
+        <Label htmlFor="super_name">{t('auth.setupAdminUsername')}</Label>
         <Input
-          id="admin_display_name"
+          id="super_name"
           placeholder={t('auth.setupAdminUsernamePlaceholder')}
-          {...register('admin_display_name')}
-          aria-invalid={!!errors.admin_display_name}
+          autoComplete="name"
+          {...register('super_name')}
+          aria-invalid={!!errors.super_name}
         />
-        {errors.admin_display_name && (
-          <p className="text-sm text-destructive">{errors.admin_display_name.message}</p>
+        {errors.super_name && (
+          <p className="text-sm text-destructive">{errors.super_name.message}</p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="admin_email">{t('auth.setupAdminEmail')}</Label>
+        <Label htmlFor="super_email">{t('auth.setupAdminEmail')}</Label>
         <Input
-          id="admin_email"
+          id="super_email"
           type="email"
           placeholder={t('auth.setupAdminEmailPlaceholder')}
-          {...register('admin_email')}
-          aria-invalid={!!errors.admin_email}
+          autoComplete="email"
+          {...register('super_email')}
+          aria-invalid={!!errors.super_email}
         />
-        {errors.admin_email && (
-          <p className="text-sm text-destructive">{errors.admin_email.message}</p>
+        {errors.super_email && (
+          <p className="text-sm text-destructive">{errors.super_email.message}</p>
         )}
       </div>
 
@@ -99,6 +102,7 @@ function Step1Form({
           id="password"
           type="password"
           placeholder={t('auth.passwordPlaceholder')}
+          autoComplete="new-password"
           {...register('password')}
           aria-invalid={!!errors.password}
         />
@@ -112,6 +116,7 @@ function Step1Form({
         <Input
           id="confirmPassword"
           type="password"
+          autoComplete="new-password"
           {...register('confirmPassword')}
           aria-invalid={!!errors.confirmPassword}
         />
@@ -228,11 +233,11 @@ function Step3Review({
       <div className="space-y-3 rounded-md border p-4 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">{t('auth.setupAdminUsername')}</span>
-          <span>{data.admin_display_name}</span>
+          <span>{data.super_name}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">{t('auth.setupAdminEmail')}</span>
-          <span>{data.admin_email}</span>
+          <span>{data.super_email}</span>
         </div>
         <Separator />
         <div className="flex justify-between">
@@ -268,15 +273,15 @@ function Step3Review({
 
 // --- Main Component ---
 
-export function SetupWizard() {
+function SetupWizardInner() {
   const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [isInstalling, setIsInstalling] = useState(false);
 
   const formData = useRef<FormData>({
-    admin_display_name: '',
-    admin_email: '',
-    admin_password: '',
+    super_name: '',
+    super_email: '',
+    super_password: '',
     site_name: '',
     site_slug: '',
     site_url: '',
@@ -284,9 +289,9 @@ export function SetupWizard() {
   });
 
   const handleStep1Next = (values: Step1Values) => {
-    formData.current.admin_display_name = values.admin_display_name;
-    formData.current.admin_email = values.admin_email;
-    formData.current.admin_password = values.password;
+    formData.current.super_name = values.super_name;
+    formData.current.super_email = values.super_email;
+    formData.current.super_password = values.password;
     setStep(2);
   };
 
@@ -302,9 +307,9 @@ export function SetupWizard() {
     setIsInstalling(true);
     try {
       await api.post('/v1/setup/initialize', {
-        admin_display_name: formData.current.admin_display_name,
-        admin_email: formData.current.admin_email,
-        admin_password: formData.current.admin_password,
+        super_name: formData.current.super_name,
+        super_email: formData.current.super_email,
+        super_password: formData.current.super_password,
         site_name: formData.current.site_name,
         site_slug: formData.current.site_slug,
         site_url: formData.current.site_url,
@@ -356,10 +361,10 @@ export function SetupWizard() {
         {step === 1 && (
           <Step1Form
             defaultValues={{
-              admin_display_name: formData.current.admin_display_name,
-              admin_email: formData.current.admin_email,
-              password: formData.current.admin_password,
-              confirmPassword: formData.current.admin_password,
+              super_name: formData.current.super_name,
+              super_email: formData.current.super_email,
+              password: formData.current.super_password,
+              confirmPassword: formData.current.super_password,
             }}
             onNext={handleStep1Next}
             t={t}
@@ -391,5 +396,14 @@ export function SetupWizard() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+export function SetupWizard() {
+  return (
+    <I18nProvider>
+      <SetupWizardInner />
+      <Toaster />
+    </I18nProvider>
   );
 }

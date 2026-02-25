@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { I18nProvider } from '@/components/providers/I18nProvider';
 import { api } from '@/lib/api-client';
 
 const schema = z.object({
@@ -15,7 +16,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function ForgotPasswordForm() {
+function ForgotPasswordFormInner() {
   const { t } = useTranslation();
 
   const {
@@ -70,5 +71,13 @@ export function ForgotPasswordForm() {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+export function ForgotPasswordForm() {
+  return (
+    <I18nProvider>
+      <ForgotPasswordFormInner />
+    </I18nProvider>
   );
 }

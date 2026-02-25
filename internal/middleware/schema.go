@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sky-flux/cms/internal/schema"
@@ -37,7 +38,8 @@ func Schema(db *bun.DB) gin.HandlerFunc {
 			return
 		}
 
-		schemaName := "site_" + slugStr
+		// Convert hyphen to underscore for schema name (PostgreSQL schema names don't support hyphens)
+		schemaName := "site_" + strings.ReplaceAll(slugStr, "-", "_")
 		_, err := db.ExecContext(c.Request.Context(),
 			fmt.Sprintf("SET search_path TO '%s', 'public'", schemaName))
 		if err != nil {
