@@ -36,9 +36,13 @@ func init() {
 		// sfc_roles: built_in BOOLEAN → SMALLINT, status BOOLEAN → SMALLINT
 		if _, err := db.ExecContext(ctx, `
 			ALTER TABLE public.sfc_roles
+				ALTER COLUMN built_in DROP DEFAULT,
+				ALTER COLUMN status DROP DEFAULT;
+			ALTER TABLE public.sfc_roles
 				ALTER COLUMN built_in TYPE SMALLINT USING CASE WHEN built_in THEN 2 ELSE 1 END,
+				ALTER COLUMN status TYPE SMALLINT USING CASE WHEN status THEN 1 ELSE 2 END;
+			ALTER TABLE public.sfc_roles
 				ALTER COLUMN built_in SET DEFAULT 1,
-				ALTER COLUMN status TYPE SMALLINT USING CASE WHEN status THEN 1 ELSE 2 END,
 				ALTER COLUMN status SET DEFAULT 1;
 		`); err != nil {
 			return fmt.Errorf("migrate sfc_roles: %w", err)
@@ -46,36 +50,40 @@ func init() {
 
 		// sfc_apis: status BOOLEAN → SMALLINT
 		if _, err := db.ExecContext(ctx, `
+			ALTER TABLE public.sfc_apis ALTER COLUMN status DROP DEFAULT;
 			ALTER TABLE public.sfc_apis
-				ALTER COLUMN status TYPE SMALLINT USING CASE WHEN status THEN 1 ELSE 2 END,
-				ALTER COLUMN status SET DEFAULT 1;
+				ALTER COLUMN status TYPE SMALLINT USING CASE WHEN status THEN 1 ELSE 2 END;
+			ALTER TABLE public.sfc_apis ALTER COLUMN status SET DEFAULT 1;
 		`); err != nil {
 			return fmt.Errorf("migrate sfc_apis: %w", err)
 		}
 
 		// sfc_menus (admin): status BOOLEAN → SMALLINT
 		if _, err := db.ExecContext(ctx, `
+			ALTER TABLE public.sfc_menus ALTER COLUMN status DROP DEFAULT;
 			ALTER TABLE public.sfc_menus
-				ALTER COLUMN status TYPE SMALLINT USING CASE WHEN status THEN 1 ELSE 2 END,
-				ALTER COLUMN status SET DEFAULT 1;
+				ALTER COLUMN status TYPE SMALLINT USING CASE WHEN status THEN 1 ELSE 2 END;
+			ALTER TABLE public.sfc_menus ALTER COLUMN status SET DEFAULT 1;
 		`); err != nil {
 			return fmt.Errorf("migrate sfc_menus: %w", err)
 		}
 
 		// sfc_role_templates: built_in BOOLEAN → SMALLINT
 		if _, err := db.ExecContext(ctx, `
+			ALTER TABLE public.sfc_role_templates ALTER COLUMN built_in DROP DEFAULT;
 			ALTER TABLE public.sfc_role_templates
-				ALTER COLUMN built_in TYPE SMALLINT USING CASE WHEN built_in THEN 2 ELSE 1 END,
-				ALTER COLUMN built_in SET DEFAULT 1;
+				ALTER COLUMN built_in TYPE SMALLINT USING CASE WHEN built_in THEN 2 ELSE 1 END;
+			ALTER TABLE public.sfc_role_templates ALTER COLUMN built_in SET DEFAULT 1;
 		`); err != nil {
 			return fmt.Errorf("migrate sfc_role_templates: %w", err)
 		}
 
 		// sfc_refresh_tokens: revoked BOOLEAN → SMALLINT
 		if _, err := db.ExecContext(ctx, `
+			ALTER TABLE public.sfc_refresh_tokens ALTER COLUMN revoked DROP DEFAULT;
 			ALTER TABLE public.sfc_refresh_tokens
-				ALTER COLUMN revoked TYPE SMALLINT USING CASE WHEN revoked THEN 2 ELSE 1 END,
-				ALTER COLUMN revoked SET DEFAULT 1;
+				ALTER COLUMN revoked TYPE SMALLINT USING CASE WHEN revoked THEN 2 ELSE 1 END;
+			ALTER TABLE public.sfc_refresh_tokens ALTER COLUMN revoked SET DEFAULT 1;
 		`); err != nil {
 			return fmt.Errorf("migrate sfc_refresh_tokens: %w", err)
 		}
@@ -111,9 +119,10 @@ func init() {
 			schema := "site_" + slug
 			if _, err := db.ExecContext(ctx, fmt.Sprintf(`
 				-- post_types: built_in BOOLEAN → SMALLINT
+				ALTER TABLE %[1]s.sfc_site_post_types ALTER COLUMN built_in DROP DEFAULT;
 				ALTER TABLE %[1]s.sfc_site_post_types
-					ALTER COLUMN built_in TYPE SMALLINT USING CASE WHEN built_in THEN 2 ELSE 1 END,
-					ALTER COLUMN built_in SET DEFAULT 1;
+					ALTER COLUMN built_in TYPE SMALLINT USING CASE WHEN built_in THEN 2 ELSE 1 END;
+				ALTER TABLE %[1]s.sfc_site_post_types ALTER COLUMN built_in SET DEFAULT 1;
 
 				-- post_category_map: is_primary BOOLEAN → primary SMALLINT
 				ALTER TABLE %[1]s.sfc_site_post_category_map

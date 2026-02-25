@@ -53,7 +53,7 @@ services:
     volumes:
       - rustfs_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/ || exit 1"]
+      test: ["CMD-SHELL", "curl -so /dev/null -w '%{http_code}' http://localhost:9000/ | grep -q 403"]
       interval: 10s
       timeout: 5s
       retries: 5

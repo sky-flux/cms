@@ -40,7 +40,6 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, "http://localhost:9000", cfg.RustFS.Endpoint)
 	assert.Equal(t, "cms-media", cfg.RustFS.Bucket)
 	assert.Equal(t, "debug", cfg.Log.Level)
-	assert.Equal(t, "json", cfg.Log.Format)
 }
 
 func TestLoad_FromEnvFile(t *testing.T) {

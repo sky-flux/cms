@@ -1,3 +1,5 @@
 package preview
 
-// TODO: implement preview service
+// Preview service logic is implemented in:
+// - internal/post/service_preview.go (admin: create/list/revoke tokens, preview post)
+// - internal/public/service.go (public: preview access via token)

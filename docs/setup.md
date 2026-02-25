@@ -10,7 +10,7 @@
 |------|------|------|
 | Go | 1.25+ | https://go.dev/dl/ |
 | bun | 1.2+ | `curl -fsSL https://bun.sh/install \| bash` |
-| Docker | 25+ | https://docs.docker.com/get-docker/ |
+| Docker | 27+ | https://docs.docker.com/get-docker/ |
 | Docker Compose | 2.24+ | Docker Desktop 自带 |
 | Make | 3.81+ | macOS 自带；Linux: `sudo apt install make` |
 
@@ -299,14 +299,18 @@ sky-flux-cms/
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
+| `DB_HOST` | `localhost` | PostgreSQL 主机 |
+| `DB_PORT` | `5432` | PostgreSQL 端口 |
+| `DB_NAME` | `cms` | 数据库名 |
+| `DB_USER` | `cms_user` | 数据库用户 |
 | `DB_PASSWORD` | `changeme` | PostgreSQL 密码 |
-| `DATABASE_URL` | `postgres://cms_user:changeme@localhost:5432/cms?sslmode=disable` | 数据库连接串 |
-| `REDIS_URL` | `redis://:changeme@localhost:6379/0` | Redis 连接串 |
+| `REDIS_HOST` | `localhost` | Redis 主机 |
+| `REDIS_PORT` | `6379` | Redis 端口 |
 | `JWT_SECRET` | — | JWT 签名密钥（`make setup` 自动生成） |
 | `TOTP_ENCRYPTION_KEY` | — | 2FA 加密密钥（`make setup` 自动生成） |
-| `APP_PORT` | `8080` | 后端端口 |
-| `APP_ENV` | `development` | 运行环境 |
-| `PUBLIC_API_URL` | `http://localhost:8080` | 前端访问的后端 API 地址 |
+| `SERVER_PORT` | `8080` | 后端端口 |
+| `SERVER_MODE` | `debug` | 运行模式 |
+| `FRONTEND_URL` | `http://localhost:4321` | 前端地址 |
 
 完整环境变量清单见 [deployment.md §3](deployment.md#3-环境变量清单)。
 

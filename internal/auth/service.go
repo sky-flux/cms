@@ -12,12 +12,16 @@ import (
 	"github.com/sky-flux/cms/internal/pkg/apperror"
 	"github.com/sky-flux/cms/internal/pkg/crypto"
 	"github.com/sky-flux/cms/internal/pkg/jwt"
+	"github.com/sky-flux/cms/internal/pkg/mail"
 )
 
 const (
-	maxLoginAttempts = 5
-	lockoutWindow    = 15 * time.Minute
-	resetTokenExpiry = 30 * time.Minute
+	maxLoginAttempts    = 5
+	lockoutWindow       = 15 * time.Minute
+	resetTokenExpiry    = 30 * time.Minute
+	max2FAAttempts      = 5
+	max2FAAttemptWindow = 5 * time.Minute
+	totpReplayTTL       = 90 * time.Second
 )
 
 type Service struct {
@@ -28,7 +32,10 @@ type Service struct {
 	siteLoader    SiteLoader
 	jwtMgr        *jwt.Manager
 	rdb           *redis.Client
+	mailer        mail.Sender
 	totpKey       string // AES-256 encryption key hex
+	siteName      string
+	frontendURL   string
 	accessExpiry  time.Duration
 	refreshExpiry time.Duration
 }
@@ -37,6 +44,9 @@ type ServiceConfig struct {
 	TOTPEncryptionKey string
 	AccessExpiry      time.Duration
 	RefreshExpiry     time.Duration
+	Mailer            mail.Sender
+	SiteName          string
+	FrontendURL       string
 }
 
 func NewService(
@@ -57,7 +67,10 @@ func NewService(
 		siteLoader:    siteLoader,
 		jwtMgr:        jwtMgr,
 		rdb:           rdb,
+		mailer:        cfg.Mailer,
 		totpKey:       cfg.TOTPEncryptionKey,
+		siteName:      cfg.SiteName,
+		frontendURL:   cfg.FrontendURL,
 		accessExpiry:  cfg.AccessExpiry,
 		refreshExpiry: cfg.RefreshExpiry,
 	}
@@ -77,7 +90,7 @@ func (s *Service) Login(ctx context.Context, req *LoginReq, ip, userAgent string
 	lockoutKey := fmt.Sprintf("login_fail:%s", req.Email)
 	attempts, _ := s.rdb.Get(ctx, lockoutKey).Int()
 	if attempts >= maxLoginAttempts {
-		return nil, nil, apperror.Unauthorized("account temporarily locked due to too many failed attempts", nil)
+		return nil, nil, apperror.RateLimited("account temporarily locked due to too many failed attempts", nil)
 	}
 
 	// Verify password
@@ -245,8 +258,28 @@ func (s *Service) ForgotPassword(ctx context.Context, req *ForgotPasswordReq) er
 		return nil
 	}
 
-	// TODO: Send email via Resend
-	slog.Info("password reset token generated", "user_id", user.ID, "token", raw)
+	// Send password reset email asynchronously.
+	if s.mailer != nil {
+		go func() {
+			resetURL := fmt.Sprintf("%s/reset-password?token=%s", s.frontendURL, raw)
+			expiryMinutes := int(resetTokenExpiry.Minutes())
+			html, err := mail.RenderPasswordReset(s.siteName, resetURL, expiryMinutes)
+			if err != nil {
+				slog.Error("render password reset email failed", "error", err)
+				return
+			}
+			msg := mail.Message{
+				To:      user.Email,
+				Subject: s.siteName + " — Password Reset",
+				HTML:    html,
+			}
+			if err := s.mailer.Send(context.Background(), msg); err != nil {
+				slog.Error("send password reset email failed", "error", err, "email", user.Email)
+			}
+		}()
+	} else {
+		slog.Info("password reset token generated (mailer not configured)", "user_id", user.ID, "token", raw)
+	}
 	return nil
 }
 
@@ -332,15 +365,31 @@ func (s *Service) Verify2FA(ctx context.Context, userID string, req *Verify2FARe
 		return apperror.Internal("decrypt TOTP secret failed", err)
 	}
 
+	// Anti-replay: check if code was already used
+	replayKey := fmt.Sprintf("2fa:used:%s:%s", userID, req.Code)
+	if s.rdb.Exists(ctx, replayKey).Val() > 0 {
+		return apperror.Unauthorized("2FA code already used", nil)
+	}
+
 	if !crypto.ValidateTOTPCode(secret, req.Code) {
 		return apperror.Unauthorized("invalid TOTP code", nil)
 	}
+
+	// Mark code as used (anti-replay)
+	s.rdb.Set(ctx, replayKey, "1", totpReplayTTL)
 
 	return s.totpRepo.Enable(ctx, totp.ID)
 }
 
 // Validate2FA validates a TOTP code during login (2FA challenge).
 func (s *Service) Validate2FA(ctx context.Context, userID string, req *Validate2FAReq, ip, userAgent string) (*LoginResp, error) {
+	// Rate limit: max 5 attempts per 5 minutes
+	attemptKey := fmt.Sprintf("2fa:attempts:%s", userID)
+	attempts, _ := s.rdb.Get(ctx, attemptKey).Int()
+	if attempts >= max2FAAttempts {
+		return nil, apperror.RateLimited("too many 2FA attempts, try again later", nil)
+	}
+
 	totp, err := s.totpRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, apperror.NotFound("2FA not configured", nil)
@@ -349,6 +398,12 @@ func (s *Service) Validate2FA(ctx context.Context, userID string, req *Validate2
 	secret, err := crypto.DecryptTOTPSecret(totp.SecretEncrypted, s.totpKey)
 	if err != nil {
 		return nil, apperror.Internal("decrypt TOTP secret failed", err)
+	}
+
+	// Anti-replay: check if code was already used
+	replayKey := fmt.Sprintf("2fa:used:%s:%s", userID, req.Code)
+	if s.rdb.Exists(ctx, replayKey).Val() > 0 {
+		return nil, apperror.Unauthorized("2FA code already used", nil)
 	}
 
 	// Try TOTP code first
@@ -365,11 +420,20 @@ func (s *Service) Validate2FA(ctx context.Context, userID string, req *Validate2
 			remaining = append(remaining, h)
 		}
 		if !matched {
+			// Increment attempt counter on failure
+			s.rdb.Incr(ctx, attemptKey)
+			s.rdb.Expire(ctx, attemptKey, max2FAAttemptWindow)
 			return nil, apperror.Unauthorized("invalid 2FA code", nil)
 		}
 		// Update remaining backup codes
 		s.totpRepo.UpdateBackupCodes(ctx, totp.ID, remaining)
 	}
+
+	// Mark code as used (anti-replay, TTL 90s covers TOTP window)
+	s.rdb.Set(ctx, replayKey, "1", totpReplayTTL)
+
+	// Reset attempt counter on success
+	s.rdb.Del(ctx, attemptKey)
 
 	// Issue full tokens
 	user, err := s.userRepo.GetByID(ctx, userID)

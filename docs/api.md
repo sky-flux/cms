@@ -97,85 +97,90 @@ Request
 | POST | /api/v1/rbac/roles/:id/apply-template | Super | 应用模板到角色 |
 | GET | /api/v1/rbac/me/menus | JWT | 当前用户可见菜单树 |
 
-#### 站点级管理 API（需要站点上下文）
+#### 用户管理端点（Super，无需站点上下文）
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| GET | /api/v1/posts | Viewer+ | 文章列表 |
-| POST | /api/v1/posts | Editor+ | 创建文章 |
-| GET | /api/v1/posts/:id | Viewer+ | 文章详情 |
-| PUT | /api/v1/posts/:id | Editor+ | 更新文章 |
-| DELETE | /api/v1/posts/:id | Editor+ | 软删除文章 |
-| POST | /api/v1/posts/:id/publish | Editor+ | 发布文章 |
-| POST | /api/v1/posts/:id/unpublish | Editor+ | 下架文章 |
-| POST | /api/v1/posts/:id/revert-to-draft | Editor+ | 退回草稿 |
-| POST | /api/v1/posts/:id/restore | Editor+ | 恢复文章 |
-| GET | /api/v1/posts/:id/revisions | Viewer+ | 修订历史 |
-| POST | /api/v1/posts/:id/revisions/:rev_id/rollback | Editor+ | 回滚版本 |
-| GET | /api/v1/posts/:id/translations | Viewer+ | 翻译版本列表 |
-| GET | /api/v1/posts/:id/translations/:locale | Viewer+ | 翻译版本详情 |
-| PUT | /api/v1/posts/:id/translations/:locale | Editor+ | 创建/更新翻译 |
-| DELETE | /api/v1/posts/:id/translations/:locale | Editor+ | 删除翻译 |
-| POST | /api/v1/posts/:id/preview | Editor+ | 生成预览令牌 |
-| GET | /api/v1/posts/:id/preview | Editor+ | 列出预览令牌 |
-| DELETE | /api/v1/posts/:id/preview | Editor+ | 撤销所有预览令牌 |
-| DELETE | /api/v1/posts/:id/preview/:token_id | Editor+ | 撤销单个预览令牌 |
-| GET | /api/v1/categories | Viewer+ | 分类树 |
-| GET | /api/v1/categories/:id | Viewer+ | 分类详情 |
-| POST | /api/v1/categories | Admin+ | 创建分类 |
-| PUT | /api/v1/categories/:id | Admin+ | 更新分类 |
-| DELETE | /api/v1/categories/:id | Admin+ | 删除分类 |
-| PUT | /api/v1/categories/reorder | Admin+ | 批量排序 |
-| GET | /api/v1/tags | Viewer+ | 标签列表 |
-| GET | /api/v1/tags/:id | Viewer+ | 标签详情 |
-| GET | /api/v1/tags/suggest | Viewer+ | 标签自动补全 |
-| POST | /api/v1/tags | Editor+ | 创建标签 |
-| PUT | /api/v1/tags/:id | Editor+ | 更新标签 |
-| DELETE | /api/v1/tags/:id | Editor+ | 删除标签 |
-| POST | /api/v1/media | Editor+ | 上传媒体 |
-| GET | /api/v1/media | Viewer+ | 媒体列表 |
-| DELETE | /api/v1/media/:id | Editor+ | 删除媒体 |
-| GET | /api/v1/media/:id | Viewer+ | 媒体详情 |
-| PUT | /api/v1/media/:id | Editor+ | 更新媒体元数据 |
-| DELETE | /api/v1/media/batch | Admin+ | 批量删除媒体 |
-| GET | /api/v1/api-keys | Admin+ | API Key 列表 |
-| POST | /api/v1/api-keys | Admin+ | 创建 API Key |
-| DELETE | /api/v1/api-keys/:id | Admin+ | 吊销 API Key |
-| GET | /api/v1/settings | Admin+ | 系统配置列表 |
-| PUT | /api/v1/settings/:key | Super | 更新配置项 |
-| GET | /api/v1/audit-logs | Super | 审计日志 |
 | GET | /api/v1/users | Super | 用户列表 |
 | POST | /api/v1/users | Super | 创建用户 |
 | GET | /api/v1/users/:id | Super | 用户详情 |
 | PUT | /api/v1/users/:id | Super | 更新用户 |
 | DELETE | /api/v1/users/:id | Super | 删除用户 |
-| GET | /api/v1/post-types | Viewer+ | 文章类型列表 |
-| POST | /api/v1/post-types | Admin+ | 创建文章类型 |
-| PUT | /api/v1/post-types/:id | Admin+ | 更新文章类型 |
-| DELETE | /api/v1/post-types/:id | Admin+ | 删除文章类型 |
-| GET | /api/v1/comments | Editor+ | 评论列表 |
-| GET | /api/v1/comments/:id | Editor+ | 评论详情 |
-| PUT | /api/v1/comments/:id/status | Editor+ | 更新评论状态 |
-| PUT | /api/v1/comments/:id/pin | Editor+ | 切换置顶 |
-| POST | /api/v1/comments/:id/reply | Editor+ | 管理员回复 |
-| PUT | /api/v1/comments/batch-status | Admin+ | 批量更新状态 |
-| DELETE | /api/v1/comments/:id | Admin+ | 永久删除评论 |
-| GET | /api/v1/menus | Admin+ | 菜单列表 |
-| POST | /api/v1/menus | Admin+ | 创建菜单 |
-| GET | /api/v1/menus/:id | Admin+ | 菜单详情 |
-| PUT | /api/v1/menus/:id | Admin+ | 更新菜单 |
-| DELETE | /api/v1/menus/:id | Admin+ | 删除菜单 |
-| POST | /api/v1/menus/:id/items | Admin+ | 添加菜单项 |
-| PUT | /api/v1/menus/:id/items/:item_id | Admin+ | 更新菜单项 |
-| DELETE | /api/v1/menus/:id/items/:item_id | Admin+ | 删除菜单项 |
-| PUT | /api/v1/menus/:id/items/reorder | Admin+ | 批量排序菜单项 |
-| GET | /api/v1/redirects | Admin+ | 重定向列表 |
-| POST | /api/v1/redirects | Admin+ | 创建重定向 |
-| PUT | /api/v1/redirects/:id | Admin+ | 更新重定向 |
-| DELETE | /api/v1/redirects/:id | Admin+ | 删除重定向 |
-| DELETE | /api/v1/redirects/batch | Admin+ | 批量删除重定向 |
-| POST | /api/v1/redirects/import | Admin+ | CSV 导入重定向 |
-| GET | /api/v1/redirects/export | Admin+ | CSV 导出重定向 |
+
+#### 站点级管理 API（需要站点上下文）
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | /api/v1/site/posts | Viewer+ | 文章列表 |
+| POST | /api/v1/site/posts | Editor+ | 创建文章 |
+| GET | /api/v1/site/posts/:id | Viewer+ | 文章详情 |
+| PUT | /api/v1/site/posts/:id | Editor+ | 更新文章 |
+| DELETE | /api/v1/site/posts/:id | Editor+ | 软删除文章 |
+| POST | /api/v1/site/posts/:id/publish | Editor+ | 发布文章 |
+| POST | /api/v1/site/posts/:id/unpublish | Editor+ | 下架文章 |
+| POST | /api/v1/site/posts/:id/revert-to-draft | Editor+ | 退回草稿 |
+| POST | /api/v1/site/posts/:id/restore | Editor+ | 恢复文章 |
+| GET | /api/v1/site/posts/:id/revisions | Viewer+ | 修订历史 |
+| POST | /api/v1/site/posts/:id/revisions/:rev_id/rollback | Editor+ | 回滚版本 |
+| GET | /api/v1/site/posts/:id/translations | Viewer+ | 翻译版本列表 |
+| GET | /api/v1/site/posts/:id/translations/:locale | Viewer+ | 翻译版本详情 |
+| PUT | /api/v1/site/posts/:id/translations/:locale | Editor+ | 创建/更新翻译 |
+| DELETE | /api/v1/site/posts/:id/translations/:locale | Editor+ | 删除翻译 |
+| POST | /api/v1/site/posts/:id/preview | Editor+ | 生成预览令牌 |
+| GET | /api/v1/site/posts/:id/preview | Editor+ | 列出预览令牌 |
+| DELETE | /api/v1/site/posts/:id/preview | Editor+ | 撤销所有预览令牌 |
+| DELETE | /api/v1/site/posts/:id/preview/:token_id | Editor+ | 撤销单个预览令牌 |
+| GET | /api/v1/site/categories | Viewer+ | 分类树 |
+| GET | /api/v1/site/categories/:id | Viewer+ | 分类详情 |
+| POST | /api/v1/site/categories | Admin+ | 创建分类 |
+| PUT | /api/v1/site/categories/:id | Admin+ | 更新分类 |
+| DELETE | /api/v1/site/categories/:id | Admin+ | 删除分类 |
+| PUT | /api/v1/site/categories/reorder | Admin+ | 批量排序 |
+| GET | /api/v1/site/tags | Viewer+ | 标签列表 |
+| GET | /api/v1/site/tags/:id | Viewer+ | 标签详情 |
+| GET | /api/v1/site/tags/suggest | Viewer+ | 标签自动补全 |
+| POST | /api/v1/site/tags | Editor+ | 创建标签 |
+| PUT | /api/v1/site/tags/:id | Editor+ | 更新标签 |
+| DELETE | /api/v1/site/tags/:id | Editor+ | 删除标签 |
+| POST | /api/v1/site/media | Editor+ | 上传媒体 |
+| GET | /api/v1/site/media | Viewer+ | 媒体列表 |
+| DELETE | /api/v1/site/media/:id | Editor+ | 删除媒体 |
+| GET | /api/v1/site/media/:id | Viewer+ | 媒体详情 |
+| PUT | /api/v1/site/media/:id | Editor+ | 更新媒体元数据 |
+| DELETE | /api/v1/site/media/batch | Admin+ | 批量删除媒体 |
+| GET | /api/v1/site/api-keys | Admin+ | API Key 列表 |
+| POST | /api/v1/site/api-keys | Admin+ | 创建 API Key |
+| DELETE | /api/v1/site/api-keys/:id | Admin+ | 吊销 API Key |
+| GET | /api/v1/site/settings | Admin+ | 系统配置列表 |
+| PUT | /api/v1/site/settings | Super | 更新配置项 |
+| GET | /api/v1/site/audit-logs | Super | 审计日志 |
+| GET | /api/v1/site/post-types | Viewer+ | 文章类型列表 |
+| POST | /api/v1/site/post-types | Admin+ | 创建文章类型 |
+| PUT | /api/v1/site/post-types/:id | Admin+ | 更新文章类型 |
+| DELETE | /api/v1/site/post-types/:id | Admin+ | 删除文章类型 |
+| GET | /api/v1/site/comments | Editor+ | 评论列表 |
+| GET | /api/v1/site/comments/:id | Editor+ | 评论详情 |
+| PUT | /api/v1/site/comments/:id/status | Editor+ | 更新评论状态 |
+| PUT | /api/v1/site/comments/:id/pin | Editor+ | 切换置顶 |
+| POST | /api/v1/site/comments/:id/reply | Editor+ | 管理员回复 |
+| PUT | /api/v1/site/comments/batch-status | Admin+ | 批量更新状态 |
+| DELETE | /api/v1/site/comments/:id | Admin+ | 永久删除评论 |
+| GET | /api/v1/site/menus | Admin+ | 菜单列表 |
+| POST | /api/v1/site/menus | Admin+ | 创建菜单 |
+| GET | /api/v1/site/menus/:id | Admin+ | 菜单详情 |
+| PUT | /api/v1/site/menus/:id | Admin+ | 更新菜单 |
+| DELETE | /api/v1/site/menus/:id | Admin+ | 删除菜单 |
+| POST | /api/v1/site/menus/:id/items | Admin+ | 添加菜单项 |
+| PUT | /api/v1/site/menus/:id/items/:item_id | Admin+ | 更新菜单项 |
+| DELETE | /api/v1/site/menus/:id/items/:item_id | Admin+ | 删除菜单项 |
+| PUT | /api/v1/site/menus/:id/items/reorder | Admin+ | 批量排序菜单项 |
+| GET | /api/v1/site/redirects | Admin+ | 重定向列表 |
+| POST | /api/v1/site/redirects | Admin+ | 创建重定向 |
+| PUT | /api/v1/site/redirects/:id | Admin+ | 更新重定向 |
+| DELETE | /api/v1/site/redirects/:id | Admin+ | 删除重定向 |
+| DELETE | /api/v1/site/redirects/batch | Admin+ | 批量删除重定向 |
+| POST | /api/v1/site/redirects/import | Admin+ | CSV 导入重定向 |
+| GET | /api/v1/site/redirects/export | Admin+ | CSV 导出重定向 |
 
 #### 公开 API（站点级，API Key 认证）
 
@@ -1203,10 +1208,10 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-## 5. 用户管理 API（Super）
+## 5. 用户管理 API（Super，全局端点）
 
 ### GET /api/v1/users
-**描述**：获取用户列表（仅 Super）
+**描述**：获取用户列表（仅 Super，全局端点，无需站点上下文）
 
 **Query Params**：`page`, `per_page`, `role`, `q`（姓名/邮箱搜索）
 
@@ -1335,7 +1340,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ## 6. 文章管理 API
 
-### GET /api/v1/posts
+### GET /api/v1/site/posts
 **描述**：获取文章列表（管理端，可见所有状态）
 
 **Query Params**
@@ -1387,7 +1392,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/posts
+### POST /api/v1/site/posts
 **描述**：创建文章
 
 **Request Body**
@@ -1450,7 +1455,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### GET /api/v1/posts/:id
+### GET /api/v1/site/posts/:id
 **描述**：获取文章详情（含完整正文）
 
 **Response 200**
@@ -1494,7 +1499,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### PUT /api/v1/posts/:id
+### PUT /api/v1/site/posts/:id
 **描述**：更新文章（自动创建修订版本）
 
 #### 状态转换校验
@@ -1560,7 +1565,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### DELETE /api/v1/posts/:id
+### DELETE /api/v1/site/posts/:id
 **描述**：软删除（移入回收站）
 
 **Response 200**
@@ -1573,7 +1578,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/posts/:id/publish
+### POST /api/v1/site/posts/:id/publish
 **描述**：立即发布文章（状态改为 published，适用于 draft / scheduled / archived 状态）
 
 **Response 200**
@@ -1586,7 +1591,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/posts/:id/unpublish
+### POST /api/v1/site/posts/:id/unpublish
 **描述**：下架文章（状态改为 archived）
 
 **Response 200**
@@ -1599,7 +1604,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/posts/:id/revert-to-draft
+### POST /api/v1/site/posts/:id/revert-to-draft
 **描述**：退回草稿（状态改为 draft，适用于 scheduled / published / archived 状态）
 
 **Response 200**
@@ -1612,7 +1617,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/posts/:id/restore
+### POST /api/v1/site/posts/:id/restore
 **描述**：从回收站恢复
 
 **Response 200**
@@ -1625,7 +1630,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### GET /api/v1/posts/:id/revisions
+### GET /api/v1/site/posts/:id/revisions
 **描述**：获取文章修订历史
 
 **Response 200**
@@ -1646,7 +1651,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/posts/:id/revisions/:rev_id/rollback
+### POST /api/v1/site/posts/:id/revisions/:rev_id/rollback
 **描述**：回滚到指定版本
 
 **Response 200**
@@ -1673,7 +1678,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ### 多语言内容管理
 
-#### GET /api/v1/posts/:id/translations
+#### GET /api/v1/site/posts/:id/translations
 **描述**：获取文章的所有语言版本列表
 
 **Response 200**
@@ -1697,7 +1702,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-#### GET /api/v1/posts/:id/translations/:locale
+#### GET /api/v1/site/posts/:id/translations/:locale
 **描述**：获取指定语言版本详情
 
 **Response 200**
@@ -1721,7 +1726,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-#### PUT /api/v1/posts/:id/translations/:locale
+#### PUT /api/v1/site/posts/:id/translations/:locale
 **描述**：创建或更新指定语言版本（Editor+）
 
 **Request Body**
@@ -1760,7 +1765,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-#### DELETE /api/v1/posts/:id/translations/:locale
+#### DELETE /api/v1/site/posts/:id/translations/:locale
 **描述**：删除指定语言版本（Editor+）
 
 **Response 200**
@@ -1782,7 +1787,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ## 7. 分类管理 API
 
-### GET /api/v1/categories
+### GET /api/v1/site/categories
 **描述**：获取分类树（嵌套结构）
 
 **Response 200**
@@ -1814,7 +1819,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 > 注意：`post_count` 为实时计算值（COUNT 查询 + Redis 缓存 60s），非数据库存储字段。
 
-### GET /api/v1/categories/:id
+### GET /api/v1/site/categories/:id
 **描述**：获取单个分类详情
 
 **Response 200**
@@ -1848,7 +1853,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/categories
+### POST /api/v1/site/categories
 **描述**：创建分类（Admin+）
 
 **Request Body**
@@ -1883,7 +1888,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### PUT /api/v1/categories/:id
+### PUT /api/v1/site/categories/:id
 **描述**：更新分类（Admin+）
 
 **Request Body**（所有字段可选）
@@ -1916,7 +1921,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### DELETE /api/v1/categories/:id
+### DELETE /api/v1/site/categories/:id
 **描述**：删除分类（Admin+）。仅允许删除叶子分类（无子分类）。删除后该分类下的文章将取消关联。
 
 > **注意**：与 story.md US-010 保持一致——如果目标分类存在子分类，服务端拒绝删除并返回 409 Conflict，要求先删除或移动子分类。
@@ -1955,7 +1960,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### PUT /api/v1/categories/reorder
+### PUT /api/v1/site/categories/reorder
 **描述**：批量更新分类排序（Admin+）
 
 **Request Body**
@@ -1981,7 +1986,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ## 8. 标签管理 API
 
-### GET /api/v1/tags
+### GET /api/v1/site/tags
 **描述**：获取标签列表
 
 **Query Params**：`q`（搜索），`sort`（post_count:desc），`page`，`per_page`
@@ -2014,7 +2019,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### GET /api/v1/tags/:id
+### GET /api/v1/site/tags/:id
 **描述**：获取标签详情（Viewer+）
 
 **Response 200**
@@ -2036,7 +2041,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### POST /api/v1/tags
+### POST /api/v1/site/tags
 **描述**：创建标签（Editor+）
 
 **Request Body**
@@ -2063,7 +2068,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### PUT /api/v1/tags/:id
+### PUT /api/v1/site/tags/:id
 **描述**：更新标签（Editor+）
 
 **Request Body**（所有字段可选）
@@ -2090,7 +2095,7 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### DELETE /api/v1/tags/:id
+### DELETE /api/v1/site/tags/:id
 **描述**：删除标签（Editor+）
 
 **Response 200**
@@ -2103,13 +2108,13 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 
 ---
 
-### GET /api/v1/tags/suggest?q=Go（自动补全）
+### GET /api/v1/site/tags/suggest?q=Go（自动补全）
 
 ---
 
 ## 9. 媒体资产 API
 
-### POST /api/v1/media
+### POST /api/v1/site/media
 **描述**：上传媒体文件（Multipart）
 
 **Request**：`Content-Type: multipart/form-data`
@@ -2140,7 +2145,7 @@ alt_text: 图片描述（可选）
 }
 ```
 
-### GET /api/v1/media
+### GET /api/v1/site/media
 **描述**：获取媒体列表
 
 **Query Params**：`page`, `per_page`, `q`, `media_type`
@@ -2174,7 +2179,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### DELETE /api/v1/media/:id
+### DELETE /api/v1/site/media/:id
 **描述**：删除媒体文件
 
 **Query Params**
@@ -2216,7 +2221,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### GET /api/v1/media/:id
+### GET /api/v1/site/media/:id
 **描述**：获取单个媒体文件详情（含引用计数和引用文章列表）（Viewer+）
 
 **Response 200**
@@ -2256,7 +2261,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### PUT /api/v1/media/:id
+### PUT /api/v1/site/media/:id
 **描述**：更新媒体文件元数据（Editor+）
 
 **Request Body**
@@ -2299,7 +2304,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### DELETE /api/v1/media/batch
+### DELETE /api/v1/site/media/batch
 **描述**：批量删除媒体文件（Admin+）
 
 **Request Body**
@@ -2340,7 +2345,7 @@ alt_text: 图片描述（可选）
 
 ## 10. API Key 管理
 
-### GET /api/v1/api-keys
+### GET /api/v1/site/api-keys
 **描述**：获取 API Key 列表（Admin+）
 
 **Response 200**
@@ -2366,7 +2371,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### POST /api/v1/api-keys
+### POST /api/v1/site/api-keys
 **描述**：创建 API Key（Admin+）
 
 **Request Body**
@@ -2394,7 +2399,7 @@ alt_text: 图片描述（可选）
 }
 ```
 
-### DELETE /api/v1/api-keys/:id
+### DELETE /api/v1/site/api-keys/:id
 **描述**：吊销 API Key（Admin+）
 
 **Response 200**
@@ -2407,9 +2412,9 @@ alt_text: 图片描述（可选）
 
 ---
 
-## 11. 系统设置 API（Admin+）
+## 11. 系统设置 API（站点级，Admin+）
 
-### GET /api/v1/settings
+### GET /api/v1/site/settings
 **描述**：获取所有系统配置项（Admin+）
 
 **Response 200**
@@ -2433,12 +2438,13 @@ alt_text: 图片描述（可选）
 
 ---
 
-### PUT /api/v1/settings/:key
+### PUT /api/v1/site/settings
 **描述**：更新指定配置项（仅 Super）
 
 **Request Body**
 ```json
 {
+  "key": "site_name",
   "value": "My New Site Name"
 }
 ```
@@ -2457,9 +2463,9 @@ alt_text: 图片描述（可选）
 
 ---
 
-## 12. 审计日志 API（Super）
+## 12. 审计日志 API（站点级，Super）
 
-### GET /api/v1/audit-logs
+### GET /api/v1/site/audit-logs
 **描述**：查询审计日志（仅 Super）
 
 **Query Params**
@@ -2660,7 +2666,7 @@ alt_text: 图片描述（可选）
 
 > **优先级**：P2（计划），详见 story.md US-009。此模块为自定义字段功能的后端基础，允许 Admin 定义文章类型及其附加字段 Schema。
 
-### POST /api/v1/post-types
+### POST /api/v1/site/post-types
 **描述**：创建文章类型及其自定义字段定义（Admin+）
 
 **Request Body**
@@ -2709,7 +2715,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### GET /api/v1/post-types
+### GET /api/v1/site/post-types
 **描述**：获取所有文章类型列表（认证用户均可）
 
 **Response 200**
@@ -2732,7 +2738,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### PUT /api/v1/post-types/:id
+### PUT /api/v1/site/post-types/:id
 **描述**：更新文章类型及字段定义（Admin+）
 
 **Request Body**（所有字段可选）
@@ -2767,7 +2773,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### DELETE /api/v1/post-types/:id
+### DELETE /api/v1/site/post-types/:id
 **描述**：删除文章类型（Admin+）
 
 > 删除文章类型不会删除关联的文章，但文章的 `post_type_id` 将被置空，`extra_fields` 数据保留。
@@ -2786,9 +2792,9 @@ alt_text: 图片描述（可选）
 
 > 所有评论端点都是站点级的，SchemaMiddleware 已设置 `search_path`。管理端点需要 JWT 认证，公开端点使用 API Key 认证。
 
-### 管理端点（/api/v1/comments）
+### 管理端点（/api/v1/site/comments）
 
-#### GET /api/v1/comments
+#### GET /api/v1/site/comments
 **描述**：评论列表，支持按文章、状态过滤（审核队列）
 **认证**：JWT（Editor+）
 
@@ -2835,7 +2841,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### GET /api/v1/comments/:id
+#### GET /api/v1/site/comments/:id
 **描述**：获取单条评论详情（含直接回复列表）
 **认证**：JWT（Editor+）
 
@@ -2880,7 +2886,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### PUT /api/v1/comments/:id/status
+#### PUT /api/v1/site/comments/:id/status
 **描述**：更新评论状态（审批/拒绝/标记垃圾/移入回收站）
 **认证**：JWT（Editor+）
 
@@ -2910,7 +2916,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### PUT /api/v1/comments/:id/pin
+#### PUT /api/v1/site/comments/:id/pin
 **描述**：切换评论置顶状态
 **认证**：JWT（Editor+）
 
@@ -2939,7 +2945,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### POST /api/v1/comments/:id/reply
+#### POST /api/v1/site/comments/:id/reply
 **描述**：管理员回复评论（自动审核通过，`user_id` 和作者信息从 JWT 填充）
 **认证**：JWT（Editor+）
 
@@ -2972,7 +2978,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### PUT /api/v1/comments/batch-status
+#### PUT /api/v1/site/comments/batch-status
 **描述**：批量更新评论状态（Admin+）
 
 **Request Body**
@@ -2997,7 +3003,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### DELETE /api/v1/comments/:id
+#### DELETE /api/v1/site/comments/:id
 **描述**：永久删除评论及其子回复（Admin+，CASCADE 删除）
 
 **Response 200**
@@ -3126,9 +3132,9 @@ alt_text: 图片描述（可选）
 
 > 菜单管理端点需要 Admin+ 角色。公开端点使用 API Key 认证。
 
-### 管理端点（/api/v1/menus）
+### 管理端点（/api/v1/site/menus）
 
-#### GET /api/v1/menus
+#### GET /api/v1/site/menus
 **描述**：获取当前站点的所有菜单列表（Admin+）
 
 **Query Params**
@@ -3158,7 +3164,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### POST /api/v1/menus
+#### POST /api/v1/site/menus
 **描述**：创建菜单（Admin+）
 
 **Request Body**
@@ -3201,7 +3207,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### GET /api/v1/menus/:id
+#### GET /api/v1/site/menus/:id
 **描述**：获取菜单详情（含嵌套菜单项树）（Admin+）
 
 **Response 200**
@@ -3255,7 +3261,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### PUT /api/v1/menus/:id
+#### PUT /api/v1/site/menus/:id
 **描述**：更新菜单元数据（Admin+）
 
 **Request Body**（所有字段可选）
@@ -3288,7 +3294,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### DELETE /api/v1/menus/:id
+#### DELETE /api/v1/site/menus/:id
 **描述**：删除菜单及所有菜单项（Admin+，CASCADE 删除）
 
 **Response 200**
@@ -3303,7 +3309,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### POST /api/v1/menus/:id/items
+#### POST /api/v1/site/menus/:id/items
 **描述**：添加菜单项（Admin+）
 
 **Request Body**
@@ -3361,7 +3367,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### PUT /api/v1/menus/:id/items/:item_id
+#### PUT /api/v1/site/menus/:id/items/:item_id
 **描述**：更新菜单项（Admin+）
 
 **Request Body**（所有字段可选）
@@ -3395,7 +3401,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### DELETE /api/v1/menus/:id/items/:item_id
+#### DELETE /api/v1/site/menus/:id/items/:item_id
 **描述**：删除菜单项及其子项（Admin+，CASCADE 删除）
 
 **Response 200**
@@ -3408,7 +3414,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-#### PUT /api/v1/menus/:id/items/reorder
+#### PUT /api/v1/site/menus/:id/items/reorder
 **描述**：批量重排菜单项（Admin+），支持同时修改父级关系
 
 **Request Body**
@@ -3494,7 +3500,7 @@ alt_text: 图片描述（可选）
 
 > 所有重定向端点需要 Admin+ 角色。SchemaMiddleware 已设置 search_path。
 
-### GET /api/v1/redirects
+### GET /api/v1/site/redirects
 **描述**：重定向列表（支持搜索、排序、分页）
 **认证**：JWT（Admin+）
 
@@ -3536,7 +3542,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### POST /api/v1/redirects
+### POST /api/v1/site/redirects
 **描述**：创建重定向
 **认证**：JWT（Admin+）
 
@@ -3587,7 +3593,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### PUT /api/v1/redirects/:id
+### PUT /api/v1/site/redirects/:id
 **描述**：更新重定向
 **认证**：JWT（Admin+）
 
@@ -3623,7 +3629,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### DELETE /api/v1/redirects/:id
+### DELETE /api/v1/site/redirects/:id
 **描述**：删除单条重定向
 **认证**：JWT（Admin+）
 
@@ -3639,7 +3645,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### DELETE /api/v1/redirects/batch
+### DELETE /api/v1/site/redirects/batch
 **描述**：批量删除重定向
 **认证**：JWT（Admin+）
 
@@ -3664,7 +3670,7 @@ alt_text: 图片描述（可选）
 
 ---
 
-### POST /api/v1/redirects/import
+### POST /api/v1/site/redirects/import
 **描述**：从 CSV 文件导入重定向
 **认证**：JWT（Admin+）
 
@@ -3699,7 +3705,7 @@ source_path,target_url,status_code
 
 ---
 
-### GET /api/v1/redirects/export
+### GET /api/v1/site/redirects/export
 **描述**：导出当前站点所有重定向为 CSV
 **认证**：JWT（Admin+）
 
@@ -3719,7 +3725,7 @@ source_path,target_url,status_code,is_active,hit_count,created_at
 
 ### 管理端点
 
-#### POST /api/v1/posts/:id/preview
+#### POST /api/v1/site/posts/:id/preview
 **描述**：生成草稿预览链接
 **认证**：JWT（Editor+）
 
@@ -3757,7 +3763,7 @@ source_path,target_url,status_code,is_active,hit_count,created_at
 
 ---
 
-#### GET /api/v1/posts/:id/preview
+#### GET /api/v1/site/posts/:id/preview
 **描述**：列出文章的所有有效（未过期）预览令牌
 **认证**：JWT（Editor+）
 
@@ -3783,7 +3789,7 @@ source_path,target_url,status_code,is_active,hit_count,created_at
 
 ---
 
-#### DELETE /api/v1/posts/:id/preview
+#### DELETE /api/v1/site/posts/:id/preview
 **描述**：撤销文章的所有预览令牌
 **认证**：JWT（Editor+）
 
@@ -3800,7 +3806,7 @@ source_path,target_url,status_code,is_active,hit_count,created_at
 
 ---
 
-#### DELETE /api/v1/posts/:id/preview/:token_id
+#### DELETE /api/v1/site/posts/:id/preview/:token_id
 **描述**：撤销单个预览令牌
 **认证**：JWT（Editor+）
 

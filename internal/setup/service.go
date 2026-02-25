@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"regexp"
 	"sync/atomic"
 	"time"
@@ -152,14 +151,13 @@ func (s *Service) Initialize(ctx context.Context, req *InitializeReq) (*Initiali
 		if err != nil {
 			return fmt.Errorf("set installed flag: %w", err)
 		}
+		if err := schema.CreateSiteSchema(ctx, tx, req.SiteSlug); err != nil {
+			return fmt.Errorf("create site schema: %w", err)
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
-	}
-	if err := schema.CreateSiteSchema(ctx, s.db, req.SiteSlug); err != nil {
-		slog.Error("create site schema failed after install", "error", err, "slug", req.SiteSlug)
-		return nil, apperror.Internal("site schema creation failed", err)
 	}
 	s.rdb.Set(ctx, "system:installed", "true", 0)
 	s.installed.Store(1)

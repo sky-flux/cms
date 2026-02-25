@@ -85,8 +85,7 @@ type ResendConfig struct {
 }
 
 type LogConfig struct {
-	Level  string
-	Format string
+	Level string
 }
 
 func Load(cfgFile string) (*Config, error) {
@@ -124,7 +123,7 @@ func Load(cfgFile string) (*Config, error) {
 	viper.SetDefault("RESEND_FROM_NAME", "Sky Flux CMS")
 	viper.SetDefault("RESEND_FROM_EMAIL", "noreply@example.com")
 	viper.SetDefault("LOG_LEVEL", "debug")
-	viper.SetDefault("LOG_FORMAT", "json")
+
 
 	// Read .env file (optional — env vars take precedence)
 	_ = viper.ReadInConfig()
@@ -198,8 +197,7 @@ func Load(cfgFile string) (*Config, error) {
 			FromEmail: viper.GetString("RESEND_FROM_EMAIL"),
 		},
 		Log: LogConfig{
-			Level:  viper.GetString("LOG_LEVEL"),
-			Format: viper.GetString("LOG_FORMAT"),
+			Level: viper.GetString("LOG_LEVEL"),
 		},
 	}
 

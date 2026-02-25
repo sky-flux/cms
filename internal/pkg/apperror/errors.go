@@ -86,6 +86,10 @@ func VersionConflict(msg string, err error) *AppError {
 	return &AppError{Code: http.StatusConflict, Message: msg, Err: errors.Join(ErrVersionConflict, err)}
 }
 
+func RateLimited(msg string, err error) *AppError {
+	return &AppError{Code: http.StatusTooManyRequests, Message: msg, Err: errors.Join(ErrRateLimited, err)}
+}
+
 func Internal(msg string, err error) *AppError {
 	return &AppError{Code: http.StatusInternalServerError, Message: msg, Err: errors.Join(ErrInternal, err)}
 }

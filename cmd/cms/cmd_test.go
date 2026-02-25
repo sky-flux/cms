@@ -88,7 +88,8 @@ func TestInitLogger_Levels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
-				Log: config.LogConfig{Level: tt.level, Format: "text"},
+				Server: config.ServerConfig{Mode: "debug"},
+				Log:    config.LogConfig{Level: tt.level},
 			}
 			initLogger(cfg)
 
@@ -105,19 +106,20 @@ func TestInitLogger_Levels(t *testing.T) {
 
 func TestInitLogger_Formats(t *testing.T) {
 	tests := []struct {
-		name   string
-		format string
-		want   string
+		name string
+		mode string
+		want string
 	}{
-		{"json", "json", "*slog.JSONHandler"},
-		{"text", "text", "*slog.TextHandler"},
-		{"default_is_text", "", "*slog.TextHandler"},
+		{"debug_uses_tint", "debug", "*tint.handler"},
+		{"release_uses_json", "release", "*slog.JSONHandler"},
+		{"empty_mode_uses_json", "", "*slog.JSONHandler"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
-				Log: config.LogConfig{Level: "info", Format: tt.format},
+				Server: config.ServerConfig{Mode: tt.mode},
+				Log:    config.LogConfig{Level: "info"},
 			}
 			initLogger(cfg)
 

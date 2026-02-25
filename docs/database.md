@@ -19,7 +19,7 @@ erDiagram
         varchar password_hash
         varchar display_name
         text    avatar_url
-        boolean is_active
+        smallint status
         timestamptz last_login_at
         timestamptz created_at
         timestamptz updated_at
@@ -35,7 +35,7 @@ erDiagram
         text    logo_url
         varchar default_locale
         varchar timezone
-        boolean is_active
+        smallint status
         jsonb   settings
         timestamptz created_at
         timestamptz updated_at
@@ -47,8 +47,8 @@ erDiagram
         varchar name        UK
         varchar slug        UK
         text    description
-        boolean built_in
-        boolean status
+        smallint built_in
+        smallint status
         timestamptz created_at
         timestamptz updated_at
     }
@@ -66,7 +66,7 @@ erDiagram
         varchar name
         text    description
         varchar group
-        boolean status
+        smallint status
         timestamptz created_at
         timestamptz updated_at
     }
@@ -83,7 +83,7 @@ erDiagram
         varchar icon
         varchar path
         int     sort_order
-        boolean status
+        smallint status
         timestamptz created_at
         timestamptz updated_at
     }
@@ -97,7 +97,7 @@ erDiagram
         uuid    id          PK "uuidv7()"
         varchar name        UK
         text    description
-        boolean built_in
+        smallint built_in
         timestamptz created_at
         timestamptz updated_at
     }
@@ -117,7 +117,7 @@ erDiagram
         uuid    user_id     FK
         varchar token_hash  UK
         timestamptz expires_at
-        boolean revoked
+        smallint revoked
         inet    ip_address
         text    user_agent
         timestamptz created_at
@@ -128,7 +128,7 @@ erDiagram
         uuid    user_id          FK UK
         text    secret_encrypted
         text[]  backup_codes_hash
-        boolean is_enabled
+        smallint enabled
         timestamptz verified_at
         timestamptz created_at
         timestamptz updated_at
@@ -257,7 +257,7 @@ erDiagram
         text    user_agent
         text    content
         smallint status
-        boolean is_pinned
+        smallint pinned
         timestamptz created_at
         timestamptz updated_at
         timestamptz deleted_at
@@ -282,7 +282,9 @@ erDiagram
         smallint type
         uuid    reference_id
         int     sort_order
-        boolean is_active
+        smallint status
+        varchar icon
+        varchar css_class
         timestamptz created_at
         timestamptz updated_at
     }
@@ -292,7 +294,7 @@ erDiagram
         varchar source_path  UK
         text    target_url
         int     status_code
-        boolean is_active
+        smallint status
         bigint  hit_count
         timestamptz last_hit_at
         uuid    created_by   FK "public.sfc_users"
@@ -315,7 +317,7 @@ erDiagram
         varchar name
         varchar key_hash    UK
         varchar key_prefix
-        boolean is_active
+        smallint status
         timestamptz last_used_at
         timestamptz expires_at
         int     rate_limit
@@ -339,7 +341,7 @@ erDiagram
     sfc_site_post_category_map {
         uuid    post_id     FK
         uuid    category_id FK
-        boolean is_primary
+        smallint primary
     }
 
     sfc_site_post_tag_map {
@@ -353,7 +355,7 @@ erDiagram
         varchar slug        UK
         text    description
         jsonb   fields
-        boolean built_in
+        smallint built_in
         timestamptz created_at
         timestamptz updated_at
     }
@@ -418,6 +420,15 @@ erDiagram
 -- ============================================
 -- 枚举值映射（SMALLINT 常量定义，参见 internal/model/enums.go）
 -- ============================================
+-- toggle (built_in/revoked/enabled/primary/pinned): 1=no, 2=yes
+-- user_status:    1=active, 2=disabled
+-- site_status:    1=active, 2=disabled
+-- role_status:    1=active, 2=disabled
+-- api_status:     1=active, 2=disabled
+-- menu_status:    1=active, 2=hidden (admin menus)
+-- api_key_status: 1=active, 2=revoked
+-- redirect_status:1=active, 2=disabled
+-- menu_item_status:1=active, 2=hidden (site menu items)
 -- post_status:    1=draft, 2=scheduled, 3=published, 4=archived
 -- media_type:     1=image, 2=video, 3=audio, 4=document, 5=other
 -- comment_status: 1=pending, 2=approved, 3=spam, 4=trash
@@ -447,7 +458,7 @@ CREATE TABLE public.sfc_users (
     password_hash VARCHAR(255) NOT NULL,          -- bcrypt, cost=12
     display_name  VARCHAR(100) NOT NULL,
     avatar_url    TEXT,
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    status        SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
     last_login_at TIMESTAMPTZ,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -464,8 +475,8 @@ CREATE TRIGGER trg_sfc_users_updated_at
 -- ============================================
 -- 当用户被软删除（deleted_at 置为时间戳）时，应用层需处理以下关联数据：
 --
--- 1. sfc_refresh_tokens：立即吊销该用户所有 Refresh Token（UPDATE SET revoked = true）
--- 2. sfc_site_api_keys（跨所有站点 schema）：立即停用该用户拥有的所有 API Key（UPDATE SET is_active = false, revoked_at = NOW()）
+-- 1. sfc_refresh_tokens：立即吊销该用户所有 Refresh Token（UPDATE SET revoked = 2）
+-- 2. sfc_site_api_keys（跨所有站点 schema）：立即停用该用户拥有的所有 API Key（UPDATE SET status = 2, revoked_at = NOW()）
 -- 3. sfc_site_posts（跨所有站点 schema）：保留文章不变（author_id 仍指向该用户），文章可由 Admin 重新分配作者
 -- 4. sfc_site_media_files（跨所有站点 schema）：保留媒体文件不变（uploader_id 仍指向该用户），文件仍可被引用
 -- 5. sfc_site_audits：保留审计日志不变（actor_email 冗余字段确保日志可读）
@@ -485,7 +496,7 @@ CREATE TABLE public.sfc_sites (
     logo_url        TEXT,
     default_locale  VARCHAR(10)  NOT NULL DEFAULT 'zh-CN',
     timezone        VARCHAR(50)  NOT NULL DEFAULT 'Asia/Shanghai',
-    is_active       BOOLEAN      NOT NULL DEFAULT TRUE,
+    status          SMALLINT     NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
     settings        JSONB        NOT NULL DEFAULT '{}',
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -496,7 +507,7 @@ CREATE TABLE public.sfc_sites (
 );
 
 CREATE INDEX idx_sfc_sites_domain ON public.sfc_sites(domain) WHERE domain IS NOT NULL;
-CREATE INDEX idx_sfc_sites_active ON public.sfc_sites(is_active) WHERE is_active = TRUE;
+CREATE INDEX idx_sfc_sites_active ON public.sfc_sites(status) WHERE status = 1;
 
 CREATE TRIGGER trg_sfc_sites_updated_at
     BEFORE UPDATE ON public.sfc_sites FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -504,14 +515,14 @@ CREATE TRIGGER trg_sfc_sites_updated_at
 -- ============================================
 -- 3. 角色定义表（全局，动态 RBAC）
 -- ============================================
--- 系统内置 4 个角色（super/admin/editor/viewer），built_in=true 不可删除
+-- 系统内置 4 个角色（super/admin/editor/viewer），built_in=2 不可删除
 CREATE TABLE public.sfc_roles (
     id          UUID PRIMARY KEY DEFAULT uuidv7(),
     name        VARCHAR(50)  NOT NULL UNIQUE,
     slug        VARCHAR(50)  NOT NULL UNIQUE,
     description TEXT,
-    built_in    BOOLEAN      NOT NULL DEFAULT FALSE,
-    status      BOOLEAN      NOT NULL DEFAULT TRUE,
+    built_in    SMALLINT     NOT NULL DEFAULT 1 CHECK (built_in BETWEEN 1 AND 2),
+    status      SMALLINT     NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
@@ -543,7 +554,7 @@ CREATE TABLE public.sfc_apis (
     name        VARCHAR(100) NOT NULL,
     description TEXT,
     "group"     VARCHAR(50)  NOT NULL,
-    status      BOOLEAN      NOT NULL DEFAULT TRUE,
+    status      SMALLINT     NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     UNIQUE(method, path)
@@ -576,8 +587,8 @@ CREATE TABLE public.sfc_menus (
     name       VARCHAR(100) NOT NULL,
     icon       VARCHAR(50),
     path       VARCHAR(200),
-    sort_order INT     NOT NULL DEFAULT 0,
-    status     BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INT      NOT NULL DEFAULT 0,
+    status     SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -607,7 +618,7 @@ CREATE TABLE public.sfc_role_templates (
     id          UUID PRIMARY KEY DEFAULT uuidv7(),
     name        VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
-    built_in    BOOLEAN     NOT NULL DEFAULT FALSE,
+    built_in    SMALLINT    NOT NULL DEFAULT 1 CHECK (built_in BETWEEN 1 AND 2),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -641,7 +652,7 @@ CREATE TABLE public.sfc_refresh_tokens (
     user_id     UUID NOT NULL REFERENCES public.sfc_users(id) ON DELETE CASCADE,
     token_hash  VARCHAR(255) NOT NULL UNIQUE,     -- SHA-256 hash
     expires_at  TIMESTAMPTZ NOT NULL,
-    revoked     BOOLEAN NOT NULL DEFAULT FALSE,
+    revoked     SMALLINT NOT NULL DEFAULT 1 CHECK (revoked BETWEEN 1 AND 2),
     ip_address  INET,
     user_agent  TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -659,7 +670,7 @@ CREATE TABLE public.sfc_user_totp (
     user_id           UUID NOT NULL UNIQUE REFERENCES public.sfc_users(id) ON DELETE CASCADE,
     secret_encrypted  TEXT NOT NULL,              -- AES-256-GCM 加密的 TOTP 密钥
     backup_codes_hash TEXT[],                     -- bcrypt 哈希的备用码
-    is_enabled        BOOLEAN NOT NULL DEFAULT FALSE,
+    enabled           SMALLINT NOT NULL DEFAULT 1 CHECK (enabled BETWEEN 1 AND 2),
     verified_at       TIMESTAMPTZ,                -- 首次验证/激活 2FA 的时间
     created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -731,7 +742,7 @@ CREATE TABLE {schema}.sfc_site_post_types (
     slug        VARCHAR(100) NOT NULL UNIQUE,          -- URL 安全标识符
     description TEXT,
     fields      JSONB NOT NULL DEFAULT '[]',           -- JSON Schema 定义自定义字段
-    built_in    BOOLEAN NOT NULL DEFAULT FALSE,        -- 是否为系统内置类型（article/page）
+    built_in    SMALLINT NOT NULL DEFAULT 1 CHECK (built_in BETWEEN 1 AND 2),  -- 1=否, 2=是（系统内置类型 article/page）
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -784,10 +795,10 @@ CREATE UNIQUE INDEX idx_sfc_site_posts_slug      ON {schema}.sfc_site_posts(slug
 CREATE INDEX idx_sfc_site_posts_author           ON {schema}.sfc_site_posts(author_id);
 CREATE INDEX idx_sfc_site_posts_status           ON {schema}.sfc_site_posts(status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_posts_published        ON {schema}.sfc_site_posts(published_at DESC)
-    WHERE status = 'published' AND deleted_at IS NULL;
+    WHERE status = 3 AND deleted_at IS NULL;
 
 CREATE INDEX idx_sfc_site_posts_extra            ON {schema}.sfc_site_posts USING gin(extra_fields);
-CREATE INDEX idx_sfc_site_posts_scheduled        ON {schema}.sfc_site_posts(scheduled_at) WHERE status = 'scheduled';
+CREATE INDEX idx_sfc_site_posts_scheduled        ON {schema}.sfc_site_posts(scheduled_at) WHERE status = 2;
 
 CREATE TRIGGER trg_sfc_site_posts_updated_at
     BEFORE UPDATE ON {schema}.sfc_site_posts FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -880,7 +891,7 @@ CREATE INDEX idx_sfc_site_tags_name_trgm ON {schema}.sfc_site_tags USING gin(nam
 CREATE TABLE {schema}.sfc_site_post_category_map (
     post_id     UUID NOT NULL REFERENCES {schema}.sfc_site_posts(id) ON DELETE CASCADE,
     category_id UUID NOT NULL REFERENCES {schema}.sfc_site_categories(id) ON DELETE CASCADE,
-    is_primary  BOOLEAN NOT NULL DEFAULT FALSE,
+    "primary"   SMALLINT NOT NULL DEFAULT 1 CHECK ("primary" BETWEEN 1 AND 2),
     PRIMARY KEY (post_id, category_id)
 );
 
@@ -959,7 +970,7 @@ CREATE TABLE {schema}.sfc_site_comments (
     user_agent    TEXT,
     content       TEXT NOT NULL,
     status        SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 4),
-    is_pinned     BOOLEAN NOT NULL DEFAULT FALSE,
+    pinned        SMALLINT NOT NULL DEFAULT 1 CHECK (pinned BETWEEN 1 AND 2),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at    TIMESTAMPTZ,
@@ -977,7 +988,7 @@ CREATE INDEX idx_sfc_site_comments_post_status ON {schema}.sfc_site_comments(pos
 CREATE INDEX idx_sfc_site_comments_parent      ON {schema}.sfc_site_comments(parent_id)
     WHERE parent_id IS NOT NULL;
 CREATE INDEX idx_sfc_site_comments_moderation  ON {schema}.sfc_site_comments(status, created_at DESC)
-    WHERE status = 'pending' AND deleted_at IS NULL;
+    WHERE status = 1 AND deleted_at IS NULL;
 CREATE INDEX idx_sfc_site_comments_email       ON {schema}.sfc_site_comments(author_email);
 CREATE INDEX idx_sfc_site_comments_user        ON {schema}.sfc_site_comments(user_id)
     WHERE user_id IS NOT NULL AND deleted_at IS NULL;
@@ -995,6 +1006,7 @@ CREATE TABLE {schema}.sfc_site_menus (
     name        VARCHAR(100) NOT NULL,
     slug        VARCHAR(100) NOT NULL UNIQUE,
     location    VARCHAR(50),                       -- e.g. 'header', 'footer', 'sidebar'
+    description TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -1016,7 +1028,9 @@ CREATE TABLE {schema}.sfc_site_menu_items (
     type          SMALLINT NOT NULL DEFAULT 1 CHECK (type BETWEEN 1 AND 5),
     reference_id  UUID,                            -- 指向 post/category/tag 的 FK（按 type 解析）
     sort_order    INT NOT NULL DEFAULT 0,
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    status        SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
+    icon          VARCHAR(50),
+    css_class     VARCHAR(100),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -1038,7 +1052,7 @@ CREATE TABLE {schema}.sfc_site_redirects (
     source_path   VARCHAR(500) NOT NULL UNIQUE,
     target_url    TEXT NOT NULL,
     status_code   INT NOT NULL DEFAULT 301,
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    status        SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
     hit_count     BIGINT NOT NULL DEFAULT 0,
     last_hit_at   TIMESTAMPTZ,
     created_by    UUID REFERENCES public.sfc_users(id),
@@ -1049,7 +1063,7 @@ CREATE TABLE {schema}.sfc_site_redirects (
 );
 
 CREATE INDEX idx_sfc_site_redirects_source ON {schema}.sfc_site_redirects(source_path)
-    WHERE is_active = TRUE;
+    WHERE status = 1;
 CREATE INDEX idx_sfc_site_redirects_created ON {schema}.sfc_site_redirects(created_at DESC);
 
 CREATE TRIGGER trg_sfc_site_redirects_updated_at
@@ -1082,7 +1096,7 @@ CREATE TABLE {schema}.sfc_site_api_keys (
     name         VARCHAR(100) NOT NULL,
     key_hash     VARCHAR(255) NOT NULL UNIQUE,     -- SHA-256(raw_key)
     key_prefix   VARCHAR(20) NOT NULL,             -- 展示前缀 cms_live_xxxx
-    is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+    status       SMALLINT NOT NULL DEFAULT 1 CHECK (status BETWEEN 1 AND 2),
     last_used_at TIMESTAMPTZ,
     expires_at   TIMESTAMPTZ,
     rate_limit   INT NOT NULL DEFAULT 100,         -- req/min
@@ -1167,8 +1181,8 @@ ON CONFLICT (key) DO NOTHING;
 -- 19. 初始化内置内容类型
 -- ============================================
 INSERT INTO {schema}.sfc_site_post_types (name, slug, built_in) VALUES
-('文章', 'article', TRUE),
-('页面', 'page', TRUE)
+('文章', 'article', 2),
+('页面', 'page', 2)
 ON CONFLICT (slug) DO NOTHING;
 ```
 

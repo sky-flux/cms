@@ -65,3 +65,18 @@ func (r *Repo) Revoke(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+func (r *Repo) GetByHash(ctx context.Context, hash string) (*model.APIKey, error) {
+	key := new(model.APIKey)
+	err := r.db.NewSelect().
+		Model(key).
+		Where("key_hash = ?", hash).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.NotFound("api key not found", err)
+		}
+		return nil, fmt.Errorf("apikey get by hash: %w", err)
+	}
+	return key, nil
+}

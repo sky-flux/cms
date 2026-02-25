@@ -2,8 +2,9 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  bin = "./tmp/cms serve"
   cmd = "go build -o ./tmp/cms ./cmd/cms"
+  bin = "./tmp/cms"
+  args_bin = ["serve"]
   delay = 1000
   exclude_dir = ["tmp", "vendor", "web", "node_modules", "docs", "migrations", ".git"]
   exclude_regex = ["_test\\.go$"]

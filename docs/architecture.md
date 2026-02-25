@@ -222,6 +222,14 @@ sky-flux-cms/
 │   │   ├── service.go
 │   │   ├── repository.go
 │   │   └── dto.go
+│   ├── posttype/                       # 文章类型管理模块（CRUD）
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── repository.go
+│   │   └── dto.go
+│   ├── public/                         # 公开 API 端点（Headless CMS）
+│   │   ├── handler.go
+│   │   └── service.go
 │   ├── rbac/                            # 动态 RBAC 模块（角色 / API 权限 / 菜单 / 模板）
 │   │   ├── handler.go                   # RBAC 管理 API handlers
 │   │   ├── service.go                   # 两级 Redis 缓存 service (L1 用户角色 / L2 角色-API)
@@ -237,24 +245,33 @@ sky-flux-cms/
 │   │
 │   │── ── ── 共享层（跨模块复用） ── ── ──
 │   │
-│   ├── model/                          # 共享数据模型
-│   │   ├── user.go
-│   │   ├── post.go
-│   │   ├── category.go
-│   │   ├── tag.go
-│   │   ├── media.go
-│   │   ├── apikey.go
-│   │   ├── audit.go
-│   │   ├── refresh_token.go
-│   │   ├── post_translation.go
-│   │   ├── post_type.go
-│   │   ├── system_config.go
+│   ├── model/                          # 共享数据模型（26 文件）
+│   │   ├── user.go                     # 用户模型
+│   │   ├── user_role.go                # 用户-角色关联
+│   │   ├── user_totp.go               # 2FA TOTP 模型（加密密钥 + 备用码）
+│   │   ├── role.go                     # 角色定义
+│   │   ├── role_template.go            # 权限模板
+│   │   ├── admin_menu.go               # 后台管理菜单（public schema）
+│   │   ├── api_endpoint.go             # API 端点注册
+│   │   ├── api_key.go                  # 站点 API Key
 │   │   ├── site.go                     # 站点模型（slug, domain, settings）
-│   │   ├── comment.go                  # 评论模型（含 guest/authenticated 双模式）
-│   │   ├── menu.go                     # 菜单 + 菜单项模型
+│   │   ├── site_config.go              # 站点级别配置
+│   │   ├── config.go                   # 全局配置
+│   │   ├── post.go                     # 文章模型
+│   │   ├── post_type.go                # 文章类型
+│   │   ├── category.go                 # 分类模型（树形结构）
+│   │   ├── tag.go                      # 标签模型
+│   │   ├── media.go                    # 媒体文件模型
+│   │   ├── comment.go                  # 评论模型（guest/authenticated 双模式）
+│   │   ├── menu.go                     # 导航菜单 + 菜单项模型
 │   │   ├── redirect.go                 # URL 重定向模型
+│   │   ├── audit.go                    # 审计日志模型
 │   │   ├── preview_token.go            # 预览令牌模型
-│   │   └── user_totp.go               # 2FA TOTP 模型（加密密钥 + 备用码）
+│   │   ├── refresh_token.go            # JWT Refresh Token
+│   │   ├── password_reset_token.go     # 密码重置令牌
+│   │   ├── enums.go                    # 枚举常量定义（状态/类型/动作）
+│   │   ├── hooks.go                    # bun model hooks（BeforeAppendModel 等）
+│   │   └── hooks_test.go              # hooks 单元测试
 │   ├── middleware/                     # 共享 Gin 中间件
 │   │   ├── installation_guard.go      # 安装状态守卫（未安装 → 重定向 /setup）
 │   │   ├── site_resolver.go           # 站点解析（Host / X-Site-Slug → site record）
@@ -285,20 +302,25 @@ sky-flux-cms/
 │   │   ├── containers.go             # testcontainers-go PostgreSQL 辅助
 │   │   └── httptest.go               # Gin HTTP 测试辅助
 │   └── pkg/                           # 共享工具包
-│       ├── apperror/                  # 全局错误定义
+│       ├── apperror/                  # 全局错误定义（ErrNotFound / ErrConflict / Validation）
 │       ├── response/                  # 统一响应格式（Success / Error / Paginated）
-│       ├── jwt/                       # JWT 签发/验证（待实现）
-│       ├── crypto/                    # 密码哈希 / TOTP 加密 / 预览 Token 生成（待实现）
-│       ├── slug/                      # Slug 生成（待实现）
-│       ├── paginator/                 # 分页（待实现）
-│       └── storage/                   # RustFS S3 客户端封装（待实现）
+│       ├── jwt/                       # JWT 签发/验证/黑名单
+│       ├── crypto/                    # 密码哈希 / TOTP 加密 / 预览 Token 生成
+│       ├── audit/                     # 审计日志服务（AuditService，各模块共享）
+│       ├── mail/                      # 邮件发送（ResendSender / NoopSender）
+│       ├── cache/                     # Redis 类型安全缓存操作
+│       ├── search/                    # Meilisearch 客户端封装
+│       ├── imaging/                   # 图片处理（尺寸读取 + 缩略图生成）
+│       └── storage/                   # RustFS S3 客户端封装（上传 / 删除 / URL 生成）
 │
 ├── migrations/                        # bun Go code migrations
 │   ├── main.go                        # 迁移注册表（Migrations 全局变量）
 │   ├── 20260224000001_create_core_tables.go    # 核心表（users, sites, tokens, totp, configs）
 │   ├── 20260224000002_create_rbac_tables.go    # RBAC 9 张表
 │   ├── 20260224000003_site_schema_placeholder.go  # 占位符（站点 schema 动态创建）
-│   └── 20260224000004_seed_rbac_builtins.go    # 内置角色 + 权限模板种子数据
+│   ├── 20260224000004_seed_rbac_builtins.go    # 内置角色 + 权限模板种子数据
+│   ├── 20260224000005_boolean_to_smallint.go   # BOOLEAN→SMALLINT 枚举迁移 + site schema 内容表
+│   └── 20260225000006_add_menu_columns.go      # sfc_site_menus.description + menu_items.icon/css_class
 │
 ├── web/                               # Astro 管理后台
 │   ├── src/
@@ -381,15 +403,13 @@ sky-flux-cms/
 │   ├── astro.config.mjs
 │   ├── tsconfig.json
 │   ├── components.json                # shadcn/ui 配置
-│   ├── package.json
-│   └── Dockerfile
+│   └── package.json
 │
 ├── go.mod
 ├── go.sum
 ├── Makefile
-├── Dockerfile
 ├── docker-compose.yml
-├── docker-compose.prod.yml
+├── docker-compose.prod.yml           # 生产环境部署配置
 └── README.md
 ```
 
@@ -842,10 +862,23 @@ func SetupRouter(r *gin.Engine, deps *Dependencies) {
     {
         public.GET("/posts",                   handler.PublicListPosts)
         public.GET("/posts/:slug",             handler.PublicGetPost)
+        public.GET("/categories",              handler.PublicListCategories)
+        public.GET("/tags",                    handler.PublicListTags)
+        public.GET("/search",                  handler.PublicSearch)
         public.GET("/posts/:slug/comments",    handler.PublicListComments)
         public.POST("/posts/:slug/comments",   handler.PublicCreateComment)
         public.GET("/menus",                   handler.PublicGetMenu)
-        public.GET("/preview/:token",          handler.PublicPreview)
+    }
+
+    // Preview (no API Key — token-based auth)
+    preview := r.Group("/api/public/v1")
+    preview.Use(
+        InstallationGuardMiddleware(),
+        SiteResolverMiddleware(deps.SiteRepo),
+        SchemaMiddleware(deps.DB),
+    )
+    {
+        preview.GET("/preview/:token",         handler.PublicPreview)
     }
 
     // =============================================
@@ -874,103 +907,89 @@ func SetupRouter(r *gin.Engine, deps *Dependencies) {
 
 ### 服务依赖关系
 
+> docker-compose.yml 仅包含开发基础设施服务（PostgreSQL / Redis / Meilisearch / RustFS），Go 后端和 Astro 前端在本地运行（`make dev`）。生产环境部署配置见 [deployment.md](./deployment.md)。
+
 ```mermaid
 flowchart LR
     PG[("🐘 postgres:18\n:5432")]
     RD[("🔴 redis:8\n:6379")]
-    BE["⚙️ backend\n:8080"]
-    FE["🌐 frontend\n:3000"]
-    NG["🔀 nginx\n:80 / :443"]
+    MS[("🔍 meilisearch:v1.13\n:7700")]
+    RF[("📦 rustfs\n:9000 / :9001")]
+    BE["⚙️ Go Backend\n(本地运行)"]
+    FE["🌐 Astro Frontend\n(本地运行)"]
 
     PG -->|healthy| BE
     RD -->|healthy| BE
+    MS -->|healthy| BE
+    RF -->|healthy| BE
     BE --> FE
-    BE --> NG
-    FE --> NG
 ```
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml — 开发基础设施（生产环境部署配置见 docs/deployment.md）
 # Docker Compose V2 不再需要 version 字段，已移除
 
 services:
   postgres:
     image: postgres:18-alpine
+    container_name: cms-postgres
     environment:
-      POSTGRES_DB: cms
-      POSTGRES_USER: cms_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-cms}
+      POSTGRES_USER: ${DB_USER:-cms_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cms_user -d cms"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cms_user} -d ${DB_NAME:-cms}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:8-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    container_name: cms-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-devpassword}
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"${REDIS_PASSWORD}\" ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-devpassword}", "ping"]
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 5
 
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  meilisearch:
+    image: getmeili/meilisearch:v1.13
+    container_name: cms-meilisearch
     environment:
-      DATABASE_URL: postgres://cms_user:${DB_PASSWORD}@postgres:5432/cms?sslmode=disable
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      JWT_SECRET: ${JWT_SECRET}
-      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
-      APP_PORT: 8080
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-devmasterkey}
     volumes:
-      # 媒体文件存储在 RustFS 对象存储中，无需本地 volume
+      - meili_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  frontend:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: cms-rustfs
     environment:
-      PUBLIC_API_URL: http://backend:8080
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
+    command: /data
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
-    depends_on:
-      - backend
-      - frontend
+      - rustfs_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
   redis_data:
-  sfc_site_media_files:
+  meili_data:
+  rustfs_data:
 ```
 
 ---

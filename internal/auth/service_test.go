@@ -14,6 +14,7 @@ import (
 	"github.com/sky-flux/cms/internal/pkg/apperror"
 	"github.com/sky-flux/cms/internal/pkg/crypto"
 	"github.com/sky-flux/cms/internal/pkg/jwt"
+	"github.com/sky-flux/cms/internal/pkg/mail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -166,6 +167,20 @@ func (m *mockSiteLoader) GetUserSites(_ context.Context, _ string) ([]model.Site
 }
 
 // ---------------------------------------------------------------------------
+// Mock: mail.Sender
+// ---------------------------------------------------------------------------
+
+type mockMailer struct {
+	sent    []mail.Message
+	sendErr error
+}
+
+func (m *mockMailer) Send(_ context.Context, msg mail.Message) error {
+	m.sent = append(m.sent, msg)
+	return m.sendErr
+}
+
+// ---------------------------------------------------------------------------
 // Test harness
 // ---------------------------------------------------------------------------
 
@@ -176,12 +191,17 @@ type testHarness struct {
 	totpRepo   *mockTOTPRepo
 	roleLoader *mockRoleLoader
 	siteLoader *mockSiteLoader
+	mailer     *mockMailer
 	jwtMgr     *jwt.Manager
 	rdb        *redis.Client
 	mr         *miniredis.Miniredis
 }
 
 func newHarness(t *testing.T) *testHarness {
+	return newHarnessWithMailer(t, nil)
+}
+
+func newHarnessWithMailer(t *testing.T, mailer *mockMailer) *testHarness {
 	t.Helper()
 
 	mr, err := miniredis.Run()
@@ -198,6 +218,17 @@ func newHarness(t *testing.T) *testHarness {
 	roleLoader := &mockRoleLoader{}
 	siteLoader := &mockSiteLoader{}
 
+	cfg := auth.ServiceConfig{
+		TOTPEncryptionKey: testTOTPEncKey,
+		AccessExpiry:      15 * time.Minute,
+		RefreshExpiry:     7 * 24 * time.Hour,
+	}
+	if mailer != nil {
+		cfg.Mailer = mailer
+		cfg.SiteName = "Test Site"
+		cfg.FrontendURL = "http://localhost:3000"
+	}
+
 	svc := auth.NewService(
 		userRepo,
 		tokenRepo,
@@ -206,11 +237,7 @@ func newHarness(t *testing.T) *testHarness {
 		siteLoader,
 		jwtMgr,
 		rdb,
-		auth.ServiceConfig{
-			TOTPEncryptionKey: testTOTPEncKey,
-			AccessExpiry:      15 * time.Minute,
-			RefreshExpiry:     7 * 24 * time.Hour,
-		},
+		cfg,
 	)
 
 	return &testHarness{
@@ -220,6 +247,7 @@ func newHarness(t *testing.T) *testHarness {
 		totpRepo:   totpRepo,
 		roleLoader: roleLoader,
 		siteLoader: siteLoader,
+		mailer:     mailer,
 		jwtMgr:     jwtMgr,
 		rdb:        rdb,
 		mr:         mr,
@@ -337,6 +365,7 @@ func TestLogin_LockedOut(t *testing.T) {
 	require.Error(t, err)
 	var appErr *apperror.AppError
 	require.True(t, errors.As(err, &appErr))
+	assert.Equal(t, 429, appErr.Code)
 	assert.Contains(t, appErr.Message, "temporarily locked")
 }
 
@@ -933,6 +962,140 @@ func TestValidate2FA_TOTPNotConfigured(t *testing.T) {
 	assert.Contains(t, appErr.Message, "2FA not configured")
 }
 
+func TestValidate2FA_ReplayDetection(t *testing.T) {
+	h := newHarness(t)
+	user := makeUser(t)
+	h.userRepo.byID = user
+
+	key, err := crypto.GenerateTOTPKey(testUserEmail, "Sky Flux CMS")
+	require.NoError(t, err)
+	encrypted, err := crypto.EncryptTOTPSecret(key.Secret(), testTOTPEncKey)
+	require.NoError(t, err)
+
+	h.totpRepo.getByUserID = &model.UserTOTP{
+		ID:              "totp-1",
+		UserID:          testUserID,
+		SecretEncrypted: encrypted,
+		Enabled:         model.ToggleYes,
+	}
+
+	code, err := totp.GenerateCode(key.Secret(), time.Now())
+	require.NoError(t, err)
+
+	// First use succeeds
+	resp, err := h.svc.Validate2FA(context.Background(), testUserID,
+		&auth.Validate2FAReq{Code: code}, testIP, testUserAgent,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Second use of same code fails (replay)
+	resp, err = h.svc.Validate2FA(context.Background(), testUserID,
+		&auth.Validate2FAReq{Code: code}, testIP, testUserAgent,
+	)
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	var appErr *apperror.AppError
+	require.True(t, errors.As(err, &appErr))
+	assert.Contains(t, appErr.Message, "already used")
+}
+
+func TestValidate2FA_RateLimited(t *testing.T) {
+	h := newHarness(t)
+
+	key, err := crypto.GenerateTOTPKey(testUserEmail, "Sky Flux CMS")
+	require.NoError(t, err)
+	encrypted, err := crypto.EncryptTOTPSecret(key.Secret(), testTOTPEncKey)
+	require.NoError(t, err)
+
+	h.totpRepo.getByUserID = &model.UserTOTP{
+		ID:              "totp-1",
+		UserID:          testUserID,
+		SecretEncrypted: encrypted,
+		Enabled:         model.ToggleYes,
+		BackupCodesHash: []string{},
+	}
+
+	ctx := context.Background()
+	// Simulate 5 failed attempts already in Redis
+	h.rdb.Set(ctx, "2fa:attempts:"+testUserID, "5", 5*time.Minute)
+
+	resp, err := h.svc.Validate2FA(ctx, testUserID,
+		&auth.Validate2FAReq{Code: "000000"}, testIP, testUserAgent,
+	)
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	var appErr *apperror.AppError
+	require.True(t, errors.As(err, &appErr))
+	assert.Equal(t, 429, appErr.Code)
+	assert.Contains(t, appErr.Message, "too many 2FA attempts")
+}
+
+func TestValidate2FA_FailureIncrementsAttemptCounter(t *testing.T) {
+	h := newHarness(t)
+
+	key, err := crypto.GenerateTOTPKey(testUserEmail, "Sky Flux CMS")
+	require.NoError(t, err)
+	encrypted, err := crypto.EncryptTOTPSecret(key.Secret(), testTOTPEncKey)
+	require.NoError(t, err)
+
+	h.totpRepo.getByUserID = &model.UserTOTP{
+		ID:              "totp-1",
+		UserID:          testUserID,
+		SecretEncrypted: encrypted,
+		Enabled:         model.ToggleYes,
+		BackupCodesHash: []string{},
+	}
+
+	ctx := context.Background()
+	_, _ = h.svc.Validate2FA(ctx, testUserID,
+		&auth.Validate2FAReq{Code: "WRONG-CODE"}, testIP, testUserAgent,
+	)
+
+	val, err := h.rdb.Get(ctx, "2fa:attempts:"+testUserID).Int()
+	require.NoError(t, err)
+	assert.Equal(t, 1, val)
+}
+
+func TestVerify2FA_ReplayDetection(t *testing.T) {
+	h := newHarness(t)
+
+	key, err := crypto.GenerateTOTPKey(testUserEmail, "Sky Flux CMS")
+	require.NoError(t, err)
+	encrypted, err := crypto.EncryptTOTPSecret(key.Secret(), testTOTPEncKey)
+	require.NoError(t, err)
+
+	h.totpRepo.getByUserID = &model.UserTOTP{
+		ID:              "totp-1",
+		UserID:          testUserID,
+		SecretEncrypted: encrypted,
+		Enabled:         model.ToggleNo,
+	}
+
+	code, err := totp.GenerateCode(key.Secret(), time.Now())
+	require.NoError(t, err)
+
+	// First use succeeds
+	err = h.svc.Verify2FA(context.Background(), testUserID, &auth.Verify2FAReq{Code: code})
+	require.NoError(t, err)
+
+	// Reset mock so second call doesn't hit "already enabled"
+	h.totpRepo.getByUserID = &model.UserTOTP{
+		ID:              "totp-1",
+		UserID:          testUserID,
+		SecretEncrypted: encrypted,
+		Enabled:         model.ToggleNo,
+	}
+
+	// Second use of same code fails (replay)
+	err = h.svc.Verify2FA(context.Background(), testUserID, &auth.Verify2FAReq{Code: code})
+	require.Error(t, err)
+	var appErr *apperror.AppError
+	require.True(t, errors.As(err, &appErr))
+	assert.Contains(t, appErr.Message, "already used")
+}
+
 // =========================================================================
 // Disable2FA tests
 // =========================================================================
@@ -1166,4 +1329,41 @@ func TestForceDisable2FA_DeleteFails(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "db error")
+}
+
+// =========================================================================
+// ForgotPassword email notification tests
+// =========================================================================
+
+func TestForgotPassword_SendsResetEmail(t *testing.T) {
+	mailer := &mockMailer{}
+	h := newHarnessWithMailer(t, mailer)
+	user := makeUser(t)
+	h.userRepo.byEmail = user
+
+	err := h.svc.ForgotPassword(context.Background(),
+		&auth.ForgotPasswordReq{Email: testUserEmail},
+	)
+
+	require.NoError(t, err)
+	// Email is sent async — wait briefly for goroutine
+	time.Sleep(100 * time.Millisecond)
+
+	require.Len(t, mailer.sent, 1)
+	assert.Equal(t, testUserEmail, mailer.sent[0].To)
+	assert.Contains(t, mailer.sent[0].Subject, "Password Reset")
+	assert.Contains(t, mailer.sent[0].HTML, "http://localhost:3000")
+}
+
+func TestForgotPassword_NoMailerSkipsEmail(t *testing.T) {
+	h := newHarness(t) // no mailer set
+	user := makeUser(t)
+	h.userRepo.byEmail = user
+
+	err := h.svc.ForgotPassword(context.Background(),
+		&auth.ForgotPasswordReq{Email: testUserEmail},
+	)
+
+	// Should still succeed, just not send email
+	require.NoError(t, err)
 }

@@ -12,10 +12,12 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
+	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/sky-flux/cms/internal/config"
+	"github.com/sky-flux/cms/internal/cron"
 	"github.com/sky-flux/cms/internal/database"
 	"github.com/sky-flux/cms/internal/router"
 )
@@ -98,12 +100,23 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	slog.Info("server started", "addr", srv.Addr)
 
+	// Start cron scheduler
+	cronScheduler := cron.NewScheduler(cron.Deps{
+		Sites:     cron.NewBunSiteLister(db),
+		Schema:    cron.NewBunSchemaExecutor(db),
+		Publisher: cron.NewBunScheduledPublisher(db),
+		Cleaner:   cron.NewBunTokenCleaner(db),
+		Purger:    cron.NewBunSoftDeletePurger(db),
+	})
+	cronScheduler.Start()
+
 	// Wait for interrupt signal
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	<-ctx.Done()
 
 	slog.Info("shutting down server...")
+	cronScheduler.Stop()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -132,12 +145,13 @@ func initLogger(cfg *config.Config) {
 	}
 
 	var handler slog.Handler
-	opts := &slog.HandlerOptions{Level: level}
-
-	if cfg.Log.Format == "json" {
-		handler = slog.NewJSONHandler(os.Stdout, opts)
+	if cfg.Server.Mode == "debug" {
+		handler = tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      level,
+			TimeFormat: "15:04:05",
+		})
 	} else {
-		handler = slog.NewTextHandler(os.Stdout, opts)
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
 	}
 
 	slog.SetDefault(slog.New(handler))

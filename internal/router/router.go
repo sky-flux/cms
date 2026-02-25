@@ -18,6 +18,7 @@ import (
 	"github.com/sky-flux/cms/internal/category"
 	"github.com/sky-flux/cms/internal/comment"
 	"github.com/sky-flux/cms/internal/config"
+	"github.com/sky-flux/cms/internal/feed"
 	"github.com/sky-flux/cms/internal/media"
 	sitemenu "github.com/sky-flux/cms/internal/menu"
 	"github.com/sky-flux/cms/internal/middleware"
@@ -31,6 +32,7 @@ import (
 	"github.com/sky-flux/cms/internal/pkg/search"
 	"github.com/sky-flux/cms/internal/pkg/storage"
 	"github.com/sky-flux/cms/internal/posttype"
+	"github.com/sky-flux/cms/internal/public"
 	"github.com/sky-flux/cms/internal/rbac"
 	"github.com/sky-flux/cms/internal/redirect"
 	"github.com/sky-flux/cms/internal/setup"
@@ -99,6 +101,14 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	// ── Installation guard (setupSvc implements InstallChecker) ──
 	engine.Use(middleware.InstallationGuard(setupSvc, "/health", "/api/v1/setup/"))
 
+	// ── Mailer (shared across auth, user, comment modules) ──────
+	var mailer mail.Sender
+	if cfg.Resend.APIKey != "" {
+		mailer = mail.NewResendSender(cfg.Resend.APIKey, cfg.Resend.FromName, cfg.Resend.FromEmail)
+	} else {
+		mailer = &mail.NoopSender{}
+	}
+
 	// ── Auth module (repos → service → handler) ──────────────────
 	authUserRepo := auth.NewUserRepo(db)
 	authTokenRepo := auth.NewTokenRepo(db)
@@ -109,6 +119,9 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 		TOTPEncryptionKey: cfg.TOTP.EncryptionKey,
 		AccessExpiry:      cfg.JWT.AccessExpiry,
 		RefreshExpiry:     cfg.JWT.RefreshExpiry,
+		Mailer:            mailer,
+		SiteName:          cfg.Resend.FromName,
+		FrontendURL:       cfg.Server.FrontendURL,
 	})
 	authHandler := auth.NewHandler(authSvc, cfg.JWT.RefreshExpiry)
 
@@ -211,12 +224,6 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 
 	// ── Shared services ──────────────────────────────────────────
 	auditSvc := pkgaudit.NewService(db)
-	var mailer mail.Sender
-	if cfg.Resend.APIKey != "" {
-		mailer = mail.NewResendSender(cfg.Resend.APIKey, cfg.Resend.FromName, cfg.Resend.FromEmail)
-	} else {
-		mailer = &mail.NoopSender{}
-	}
 
 	// ── User module (global scope — manages all CMS users) ──────
 	userRepo := user.NewUserRepo(db)
@@ -394,6 +401,54 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	siteScoped.POST("/redirects", redirectHandler.Create)
 	siteScoped.PUT("/redirects/:id", redirectHandler.Update)
 	siteScoped.DELETE("/redirects/:id", redirectHandler.Delete)
+
+	// ── Feed & Sitemap (no auth, site via Host header) ──────────
+	feedPostRepo := feed.NewPostRepoAdapter(db)
+	feedCatRepo := feed.NewCategoryRepoAdapter(db)
+	feedTagRepo := feed.NewTagRepoAdapter(db)
+	feedSiteConfig := feed.NewSiteConfigAdapter("Sky Flux CMS", cfg.Server.FrontendURL, "Powered by Sky Flux CMS", "en")
+	feedSvc := feed.NewService(feedPostRepo, feedCatRepo, feedTagRepo, feedSiteConfig)
+	feedHandler := feed.NewHandler(feedSvc)
+
+	feeds := engine.Group("")
+	feeds.Use(middleware.SiteResolver(siteLookup))
+	feeds.Use(middleware.Schema(db))
+	feeds.GET("/feed/rss.xml", feedHandler.RSSFeed)
+	feeds.GET("/feed/atom.xml", feedHandler.AtomFeed)
+	feeds.GET("/sitemap.xml", feedHandler.SitemapIndex)
+	feeds.GET("/sitemap-posts.xml", feedHandler.SitemapPosts)
+	feeds.GET("/sitemap-categories.xml", feedHandler.SitemapCategories)
+	feeds.GET("/sitemap-tags.xml", feedHandler.SitemapTags)
+
+	// ── Public Headless API (API Key auth, site via Host header) ─
+	publicPostRepo := public.NewPostRepoAdapter(db)
+	publicCatRepo := public.NewCategoryRepoAdapter(db)
+	publicTagRepo := public.NewTagRepoAdapter(db)
+	publicCommentRepo := public.NewCommentRepoAdapter(db)
+	publicMenuRepo := public.NewMenuRepoAdapter(db)
+	publicPreviewRepo := public.NewPreviewRepoAdapter(db)
+	publicSvc := public.NewService(publicPostRepo, publicCatRepo, publicTagRepo, publicCommentRepo, publicMenuRepo, publicPreviewRepo, searchClient, cacheClient, slog.Default(), mailer, cfg.Resend.FromName)
+	publicHandler := public.NewHandler(publicSvc)
+
+	apiKeyMW := middleware.APIKey(apikeyRepo)
+	publicAPI := engine.Group("/api/public/v1")
+	publicAPI.Use(middleware.SiteResolver(siteLookup))
+	publicAPI.Use(middleware.Schema(db))
+	publicAPI.Use(apiKeyMW)
+	publicAPI.GET("/posts", publicHandler.ListPosts)
+	publicAPI.GET("/posts/:slug", publicHandler.GetPost)
+	publicAPI.GET("/categories", publicHandler.ListCategories)
+	publicAPI.GET("/tags", publicHandler.ListTags)
+	publicAPI.GET("/search", publicHandler.Search)
+	publicAPI.GET("/posts/:slug/comments", publicHandler.ListComments)
+	publicAPI.POST("/posts/:slug/comments", middleware.RateLimit(rdb, "ratelimit:comment", 30*time.Second), publicHandler.CreateComment)
+	publicAPI.GET("/menus", publicHandler.GetMenu)
+
+	// Preview (no API Key — token-based auth)
+	previewAPI := engine.Group("/api/public/v1")
+	previewAPI.Use(middleware.SiteResolver(siteLookup))
+	previewAPI.Use(middleware.Schema(db))
+	previewAPI.GET("/preview/:token", publicHandler.Preview)
 
 	// ── API Registry — sync routes to sfc_apis ──────────────────
 	registry := rbac.NewRegistry(rbacAPIRepo)

@@ -12,19 +12,41 @@ import (
 // CreateSiteSchema creates a new site schema with all content tables.
 // It validates the slug, creates the schema, then executes the template DDL
 // with {schema} replaced by the actual schema name (site_{slug}).
-func CreateSiteSchema(ctx context.Context, db *bun.DB, slug string) error {
+//
+// db accepts bun.IDB so callers can pass either *bun.DB (self-managed tx) or
+// bun.Tx (joins an existing transaction, e.g. setup.Initialize).
+func CreateSiteSchema(ctx context.Context, db bun.IDB, slug string) error {
 	if !ValidateSlug(slug) {
 		return fmt.Errorf("invalid site slug: %q", slug)
 	}
 
 	schemaName := "site_" + slug
 
-	tx, err := db.BeginTx(ctx, nil)
+	// If the caller already provided a transaction, execute DDL directly on it.
+	if tx, ok := db.(bun.Tx); ok {
+		return createSiteSchemaWithTx(ctx, tx, schemaName)
+	}
+
+	// Otherwise, start a new transaction.
+	bunDB := db.(*bun.DB)
+	tx, err := bunDB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
+	if err := createSiteSchemaWithTx(ctx, tx, schemaName); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit schema creation: %w", err)
+	}
+
+	return nil
+}
+
+func createSiteSchemaWithTx(ctx context.Context, tx bun.Tx, schemaName string) error {
 	// Create the schema
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", bun.Ident(schemaName))); err != nil {
 		return fmt.Errorf("create schema %s: %w", schemaName, err)
@@ -41,15 +63,12 @@ func CreateSiteSchema(ctx context.Context, db *bun.DB, slug string) error {
 		return fmt.Errorf("create audit partitions in %s: %w", schemaName, err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit schema creation: %w", err)
-	}
-
 	return nil
 }
 
 // DropSiteSchema drops a site schema and all its tables.
-func DropSiteSchema(ctx context.Context, db *bun.DB, slug string) error {
+// db accepts bun.IDB so callers can pass either *bun.DB or bun.Tx.
+func DropSiteSchema(ctx context.Context, db bun.IDB, slug string) error {
 	if !ValidateSlug(slug) {
 		return fmt.Errorf("invalid site slug: %q", slug)
 	}

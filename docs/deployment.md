@@ -15,7 +15,7 @@
 | Go | 1.25+ | 后端编译与运行 |
 | Node.js | 20+ (LTS) | 前端构建与 SSR 运行 |
 | bun | 1.2+ | 前端包管理器与运行时 |
-| Docker | 25+ | 容器化部署 |
+| Docker | 27+ | 容器化部署 |
 | Docker Compose | 2.24+ | 多容器编排 |
 | PostgreSQL | 18 | 主数据库（通过 Docker 运行） |
 | Redis | 8 | 缓存与会话管理（通过 Docker 运行） |
@@ -25,7 +25,7 @@
 
 | 软件 | 最低版本 | 说明 |
 |------|----------|------|
-| Docker | 25+ | 容器运行时 |
+| Docker | 27+ | 容器运行时 |
 | Docker Compose | 2.24+ | 生产编排 |
 | Nginx | 1.25+ | 反向代理 / HTTPS 终结 |
 | Certbot | 2.0+ | Let's Encrypt 证书管理 |
@@ -76,35 +76,38 @@ docker compose ps
 # 使用方式：cp .env.example .env 后根据实际环境修改
 
 # ===== 数据库配置 =====
-DB_PASSWORD=changeme              # [必填] PostgreSQL 密码（Docker Compose 使用）
-DATABASE_URL=postgres://cms_user:changeme@localhost:5432/cms?sslmode=disable  # [必填] PostgreSQL 连接串
+DB_HOST=localhost             # PostgreSQL 主机（默认 localhost）
+DB_PORT=5432                  # PostgreSQL 端口（默认 5432）
+DB_NAME=cms                   # [必填] 数据库名称
+DB_USER=cms_user              # [必填] 数据库用户名
+DB_PASSWORD=changeme          # [必填] PostgreSQL 密码
+DB_SSLMODE=disable            # SSL 模式（默认 disable）
 DB_MAX_OPEN_CONNS=25          # 最大打开连接数（默认 25）
-DB_MAX_IDLE_CONNS=10          # 最大空闲连接数（默认 10）
-DB_CONN_MAX_LIFETIME=30m      # 连接最大存活时间（默认 30m）
+DB_MAX_IDLE_CONNS=5           # 最大空闲连接数（默认 5）
+DB_CONN_MAX_LIFETIME=1h       # 连接最大存活时间（默认 1h）
+DB_CONN_MAX_IDLE_TIME=30m     # 空闲连接最大存活时间（默认 30m）
 
 # ===== Redis 配置 =====
-REDIS_URL=redis://:changeme@localhost:6379/0  # [必填] Redis 连接串
-REDIS_PASSWORD=changeme       # Redis 密码（Docker Compose 使用）
-REDIS_MAX_RETRIES=3           # 最大重试次数（默认 3）
+REDIS_HOST=localhost          # Redis 主机（默认 localhost）
+REDIS_PORT=6379               # Redis 端口（默认 6379）
+REDIS_PASSWORD=changeme       # Redis 密码
+REDIS_DB=0                    # Redis 数据库编号（默认 0）
 
 # ===== JWT 认证配置 =====
 JWT_SECRET=your-secret-here-at-least-32-characters-long  # [必填] JWT 签名密钥（至少 32 字符，禁止硬编码）
-JWT_ACCESS_TTL=15m            # Access Token 有效期（默认 15m）
-JWT_REFRESH_TTL=168h            # Refresh Token 有效期（默认 168h，即 7 天）
+JWT_ACCESS_EXPIRY=15m         # Access Token 有效期（默认 15m）
+JWT_REFRESH_EXPIRY=168h       # Refresh Token 有效期（默认 168h，即 7 天）
 
 # ===== 2FA 配置 =====
 TOTP_ENCRYPTION_KEY=          # [必填] AES-256 加密密钥，用于加密 TOTP 秘钥（64 位十六进制字符 = 32 字节）
                               # 生成方式：openssl rand -hex 32
 
-# ===== 应用配置 =====
-APP_PORT=8080                 # 后端监听端口（默认 8080）
-APP_ENV=development           # 运行环境：development / production（默认 development）
-LOG_LEVEL=debug               # 日志级别：debug / info / warn / error（默认 info）
-CORS_ORIGINS=http://localhost:3000  # CORS 允许的源，逗号分隔（默认 http://localhost:3000）
-
-# ===== 多站点配置 =====
-DEFAULT_SITE_SLUG=            # 默认站点 slug（单站点场景可设置，请求无法匹配时回退）
-SETUP_RATE_LIMIT=5            # 安装向导接口限流（每 IP 每分钟请求次数，默认 5）
+# ===== 服务器配置 =====
+SERVER_PORT=8080              # 后端监听端口（默认 8080）
+SERVER_MODE=debug             # 运行模式：debug / release（默认 debug）
+FRONTEND_URL=http://localhost:3000  # 前端 URL（默认 http://localhost:3000）
+LOG_LEVEL=debug               # 日志级别：debug / info / warn / error（默认 debug）
+LOG_FORMAT=json               # 日志格式：json / text（默认 json）
 
 # ===== RustFS 对象存储配置 =====
 RUSTFS_ENDPOINT=http://rustfs:9000  # RustFS 服务地址（Docker 内部网络）
@@ -113,13 +116,14 @@ RUSTFS_SECRET_KEY=                  # RustFS 密钥（必填）
 RUSTFS_BUCKET=cms-media             # 存储桶名称（默认 cms-media）
 RUSTFS_REGION=us-east-1             # 区域（默认 us-east-1）
 
-# ===== SMTP 邮件配置（可选） =====
-SMTP_HOST=                    # SMTP 服务器地址
-SMTP_PORT=587                 # SMTP 端口（默认 587）
-SMTP_USER=                    # SMTP 用户名
-SMTP_PASSWORD=                # SMTP 密码
-SMTP_FROM=                    # 发件人地址（如 noreply@example.com）
-SMTP_TLS=true                 # 是否启用 TLS（默认 true）
+# ===== Resend 邮件配置 =====
+RESEND_API_KEY=re_xxxxxxxxxxxx       # [必填] Resend API Key
+RESEND_FROM_NAME=Sky Flux CMS        # 发件人显示名称（默认 Sky Flux CMS）
+RESEND_FROM_EMAIL=noreply@example.com  # [必填] 发件人邮箱地址
+
+# ===== Meilisearch 全文搜索配置 =====
+MEILI_URL=http://localhost:7700      # Meilisearch 服务地址（默认 http://localhost:7700）
+MEILI_MASTER_KEY=your-master-key     # [必填] Meilisearch Master Key
 
 # ===== 前端配置 =====
 PUBLIC_API_URL=http://localhost:8080  # [必填] 后端 API 地址（前端访问）
@@ -219,27 +223,33 @@ flowchart LR
 
 | 变量名 | 必填 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `DB_PASSWORD` | 是 | — | PostgreSQL 密码（Docker Compose 使用） |
-| `DATABASE_URL` | 是 | — | PostgreSQL 连接串 `postgres://user:pass@host:5432/db?sslmode=disable` |
+| `DB_HOST` | 否 | `localhost` | PostgreSQL 主机地址 |
+| `DB_PORT` | 否 | `5432` | PostgreSQL 端口 |
+| `DB_NAME` | 是 | — | 数据库名称 |
+| `DB_USER` | 是 | — | 数据库用户名 |
+| `DB_PASSWORD` | 是 | — | PostgreSQL 密码 |
+| `DB_SSLMODE` | 否 | `disable` | SSL 模式（`disable` / `require` / `verify-full`） |
 | `DB_MAX_OPEN_CONNS` | 否 | `25` | 最大打开连接数 |
-| `DB_MAX_IDLE_CONNS` | 否 | `10` | 最大空闲连接数 |
-| `DB_CONN_MAX_LIFETIME` | 否 | `30m` | 连接最大存活时间 |
+| `DB_MAX_IDLE_CONNS` | 否 | `5` | 最大空闲连接数 |
+| `DB_CONN_MAX_LIFETIME` | 否 | `1h` | 连接最大存活时间 |
+| `DB_CONN_MAX_IDLE_TIME` | 否 | `30m` | 空闲连接最大存活时间 |
 
 ### 3.2 Redis 配置
 
 | 变量名 | 必填 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `REDIS_URL` | 是 | — | Redis 连接串 `redis://:password@host:6379/0` |
-| `REDIS_PASSWORD` | 否 | — | Redis 密码（Docker Compose 使用） |
-| `REDIS_MAX_RETRIES` | 否 | `3` | 最大重试次数 |
+| `REDIS_HOST` | 否 | `localhost` | Redis 主机地址 |
+| `REDIS_PORT` | 否 | `6379` | Redis 端口 |
+| `REDIS_PASSWORD` | 否 | — | Redis 密码 |
+| `REDIS_DB` | 否 | `0` | Redis 数据库编号 |
 
 ### 3.3 JWT 认证配置
 
 | 变量名 | 必填 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `JWT_SECRET` | 是 | — | JWT 签名密钥（至少 32 字符） |
-| `JWT_ACCESS_TTL` | 否 | `15m` | Access Token 有效期 |
-| `JWT_REFRESH_TTL` | 否 | `168h` | Refresh Token 有效期（168h = 7 天） |
+| `JWT_ACCESS_EXPIRY` | 否 | `15m` | Access Token 有效期 |
+| `JWT_REFRESH_EXPIRY` | 否 | `168h` | Refresh Token 有效期（168h = 7 天） |
 
 ### 3.4 2FA 双因素认证配置
 
@@ -247,23 +257,17 @@ flowchart LR
 |--------|------|--------|------|
 | `TOTP_ENCRYPTION_KEY` | 是 | — | AES-256 加密密钥，用于加密 TOTP 秘钥。必须为 64 位十六进制字符（32 字节）。生成方式：`openssl rand -hex 32` |
 
-### 3.5 应用配置
+### 3.5 服务器配置
 
 | 变量名 | 必填 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `APP_PORT` | 否 | `8080` | 后端监听端口 |
-| `APP_ENV` | 否 | `development` | 运行环境：`development` / `production` |
-| `LOG_LEVEL` | 否 | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
-| `CORS_ORIGINS` | 否 | `http://localhost:3000` | CORS 允许的源，逗号分隔 |
+| `SERVER_PORT` | 否 | `8080` | 后端监听端口 |
+| `SERVER_MODE` | 否 | `debug` | 运行模式：`debug` / `release` |
+| `FRONTEND_URL` | 否 | `http://localhost:3000` | 前端 URL |
+| `LOG_LEVEL` | 否 | `debug` | 日志级别：`debug` / `info` / `warn` / `error` |
+| `LOG_FORMAT` | 否 | `json` | 日志格式：`json` / `text` |
 
-### 3.6 多站点配置
-
-| 变量名 | 必填 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `DEFAULT_SITE_SLUG` | 否 | — | 默认站点 slug（单站点场景回退使用） |
-| `SETUP_RATE_LIMIT` | 否 | `5` | 安装向导 `/api/v1/setup/initialize` 端点限流（每 IP 每分钟请求数） |
-
-### 3.7 RustFS 对象存储配置
+### 3.6 RustFS 对象存储配置
 
 | 变量名 | 必填 | 默认值 | 说明 |
 |--------|------|--------|------|
@@ -273,16 +277,20 @@ flowchart LR
 | `RUSTFS_BUCKET` | 否 | `cms-media` | 存储桶名称 |
 | `RUSTFS_REGION` | 否 | `us-east-1` | 区域设置 |
 
-### 3.8 SMTP 邮件配置
+### 3.7 Resend 邮件配置
 
 | 变量名 | 必填 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `SMTP_HOST` | 否 | — | SMTP 服务器地址 |
-| `SMTP_PORT` | 否 | `587` | SMTP 端口 |
-| `SMTP_USER` | 否 | — | SMTP 用户名 |
-| `SMTP_PASSWORD` | 否 | — | SMTP 密码 |
-| `SMTP_FROM` | 否 | — | 发件人地址（如 `noreply@example.com`） |
-| `SMTP_TLS` | 否 | `true` | 是否启用 TLS |
+| `RESEND_API_KEY` | 是 | — | Resend API Key（`re_` 开头） |
+| `RESEND_FROM_NAME` | 否 | `Sky Flux CMS` | 发件人显示名称 |
+| `RESEND_FROM_EMAIL` | 是 | — | 发件人邮箱地址（如 `noreply@example.com`） |
+
+### 3.8 Meilisearch 全文搜索配置
+
+| 变量名 | 必填 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `MEILI_URL` | 否 | `http://localhost:7700` | Meilisearch 服务地址 |
+| `MEILI_MASTER_KEY` | 是 | — | Meilisearch Master Key |
 
 ### 3.9 前端配置
 
@@ -358,14 +366,9 @@ if [ -f "${DB_PASSWORD_FILE:-}" ]; then
     export DB_PASSWORD=$(cat "$DB_PASSWORD_FILE")
 fi
 
-# 读取 Docker Secrets 并组装连接串（仅在文件存在时）
-if [ -f "${DB_PASSWORD_FILE:-}" ]; then
-    export DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
-fi
-
+# 从 Docker Secret 读取 Redis 密码
 if [ -f "${REDIS_PASSWORD_FILE:-}" ]; then
     export REDIS_PASSWORD=$(cat "${REDIS_PASSWORD_FILE}")
-    export REDIS_URL="redis://:${REDIS_PASSWORD}@redis:6379/0"
 fi
 
 if [ -f "${JWT_SECRET_FILE:-}" ]; then
@@ -540,12 +543,13 @@ services:
       DB_PORT: 5432
       DB_NAME: cms
       DB_USER: cms_user
-      DB_PASSWORD_FILE: /run/secrets/db_password          # entrypoint.sh 读取后组装 DATABASE_URL
-      REDIS_PASSWORD_FILE: /run/secrets/redis_password    # entrypoint.sh 读取后组装 REDIS_URL
+      DB_PASSWORD_FILE: /run/secrets/db_password          # entrypoint.sh 读取后注入 DB_PASSWORD
+      REDIS_HOST: redis
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password    # entrypoint.sh 读取后注入 REDIS_PASSWORD
       JWT_SECRET_FILE: /run/secrets/jwt_secret            # entrypoint.sh 读取后注入 JWT_SECRET
       TOTP_ENCRYPTION_KEY_FILE: /run/secrets/totp_key     # entrypoint.sh 读取后注入 TOTP_ENCRYPTION_KEY
-      APP_PORT: 8080
-      APP_ENV: production
+      SERVER_PORT: 8080
+      SERVER_MODE: release
       LOG_LEVEL: warn
       RUSTFS_ENDPOINT: http://rustfs:9000
       RUSTFS_BUCKET: ${RUSTFS_BUCKET:-cms-media}

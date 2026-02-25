@@ -43,6 +43,37 @@ func TestRenderDisabled(t *testing.T) {
 	assert.True(t, strings.Contains(html, "<!DOCTYPE html>"))
 }
 
+func TestRenderPasswordReset(t *testing.T) {
+	html, err := RenderPasswordReset("My Blog", "https://example.com/reset?token=abc123", 30)
+	require.NoError(t, err)
+
+	assert.True(t, strings.Contains(html, "My Blog"))
+	assert.True(t, strings.Contains(html, "https://example.com/reset?token=abc123"))
+	assert.True(t, strings.Contains(html, "30"))
+	assert.True(t, strings.Contains(html, "<!DOCTYPE html>"))
+}
+
+func TestRenderNewComment(t *testing.T) {
+	html, err := RenderNewComment("My Blog", "First Post", "Alice", "Great article!")
+	require.NoError(t, err)
+
+	assert.True(t, strings.Contains(html, "My Blog"))
+	assert.True(t, strings.Contains(html, "First Post"))
+	assert.True(t, strings.Contains(html, "Alice"))
+	assert.True(t, strings.Contains(html, "Great article!"))
+	assert.True(t, strings.Contains(html, "<!DOCTYPE html>"))
+}
+
+func TestRenderCommentReply(t *testing.T) {
+	html, err := RenderCommentReply("My Blog", "First Post", "Bob", "Thanks for sharing!")
+	require.NoError(t, err)
+
+	assert.True(t, strings.Contains(html, "My Blog"))
+	assert.True(t, strings.Contains(html, "First Post"))
+	assert.True(t, strings.Contains(html, "Bob"))
+	assert.True(t, strings.Contains(html, "Thanks for sharing!"))
+}
+
 func TestNewResendSender(t *testing.T) {
 	s := NewResendSender("re_test_key", "Sky Flux", "noreply@example.com")
 	assert.NotNil(t, s.client)
