@@ -18,8 +18,9 @@ export default defineConfig({
   projects: [
     { name: 'setup', testMatch: 'setup.spec.ts' },
     { name: 'auth', testMatch: 'auth.spec.ts', dependencies: ['setup'] },
-    { name: 'posts', testMatch: 'posts.spec.ts', dependencies: ['setup'] },
+    { name: 'content', testMatch: 'content.spec.ts', dependencies: ['setup'] },
     { name: 'media', testMatch: 'media.spec.ts', dependencies: ['setup'] },
+    { name: 'system', testMatch: 'system.spec.ts', dependencies: ['setup'] },
     { name: 'rbac', testMatch: 'rbac.spec.ts', dependencies: ['setup'] },
     { name: 'multisite', testMatch: 'multisite.spec.ts', dependencies: ['setup'] },
   ],

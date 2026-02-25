@@ -1,11 +1,11 @@
-# E2E Testing Design — Playwright Full-Stack
+# E2E Testing Design — Playwright Full-Stack (v2 Rewrite)
 
 **Date**: 2026-02-26
 **Status**: Approved
 
 ## Overview
 
-Full-stack E2E tests using Playwright against real Go backend + PostgreSQL + Redis + Meilisearch + RustFS. Covers all 6 critical user journeys defined in testing.md.
+Full-stack E2E tests using Playwright against real Go backend + PostgreSQL + Redis + Meilisearch + RustFS. Covers all critical user journeys including Batch 12 system management pages. Tests all 4 roles (Super/Admin/Editor/Viewer).
 
 ## Architecture
 
@@ -16,118 +16,123 @@ docker-compose up (PG+Redis+Meilisearch+RustFS)
       → Playwright browser tests (:4321)
 ```
 
-- **globalSetup**: Health-check all services, reset DB, run migrations, call setup/initialize API
-- **No manual cleanup**: globalSetup resets DB on each full run
-- **storageState**: Reuse auth sessions across tests within a file
+## 4 Roles
+
+| Role | Slug | Scope |
+|------|------|-------|
+| Super | `super` | All operations + multi-site management |
+| Admin | `admin` | Site management (users/roles/settings/api-keys/comments/menus/redirects), NOT sites |
+| Editor | `editor` | Content management (posts/categories/tags/media) |
+| Viewer | `viewer` | Read-only access |
 
 ## File Structure
 
 ```
-web/
-├── e2e/
-│   ├── fixtures/
-│   │   ├── test-image.png
-│   │   └── test-redirects.csv
-│   ├── helpers/
-│   │   ├── auth.ts          # login/logout helpers (UI + API cookie injection)
-│   │   ├── api.ts           # Direct API calls for data seeding
-│   │   └── constants.ts     # Shared test data (users, site, API base URL)
-│   ├── setup.spec.ts        # Installation wizard
-│   ├── auth.spec.ts         # Authentication flows
-│   ├── posts.spec.ts        # Post lifecycle
-│   ├── media.spec.ts        # Media management
-│   ├── rbac.spec.ts         # Role-based access control
-│   └── multisite.spec.ts    # Multi-site isolation
-├── playwright.config.ts
-└── package.json
+web/e2e/
+├── fixtures/
+│   ├── test-image.png
+│   └── test-redirects.csv
+├── helpers/
+│   ├── auth.ts          # loginViaUI + loginViaAPI
+│   ├── api.ts           # API seeding (setup, users, posts, sites, roles)
+│   └── constants.ts     # 4 test users + test site + API_BASE
+├── setup.spec.ts        # Installation wizard (5 cases)
+├── auth.spec.ts         # Authentication flows (8 cases)
+├── content.spec.ts      # Posts + Categories + Tags (10 cases, Editor)
+├── media.spec.ts        # Media management (5 cases, Editor)
+├── system.spec.ts       # System management (12 cases, Admin) — Batch 12 pages use test.fixme()
+├── rbac.spec.ts         # 4-role permission matrix (8 cases)
+└── multisite.spec.ts    # Multi-site isolation (5 cases, Super)
 ```
 
-Execution order controlled via Playwright `projects` with `dependencies` (setup runs first, all others depend on it).
+## Selector Strategy
 
-## Test Scenarios
+Based on actual component code:
+- Form fields: `#id` selectors (`#email`, `#password`, `#admin_display_name`, etc.)
+- Navigation: `aria-label` (`User menu`, `Toggle sidebar`)
+- Tables: `role` + text (`getByRole('heading', { name: /posts/i })`)
+- Toasts: `[data-sonner-toast]`
+- Dialogs: `getByRole('alertdialog')`
 
-### setup.spec.ts — Installation Wizard (5 cases)
+## Execution Order
 
-- `GET /api/v1/setup/check` returns `installed: false`
-- Navigate to /setup → complete 3-step wizard (site info, admin account, confirm)
-- After install: redirected to /login, setup/check returns `installed: true`
-- Repeat install attempt → rejected (409)
-- Concurrent install protection (optional, hard to test in browser)
+Playwright `projects` with `dependencies`:
+```
+setup → auth → [content, media, system, rbac, multisite]
+```
 
-### auth.spec.ts — Authentication (7 cases)
+## Test Scenarios (53 total)
 
-- Login success → redirect to /dashboard
-- Login failure → error message shown
-- Unauthenticated access to /dashboard → redirect to /login
-- 2FA setup → enable → login requires TOTP → verify → dashboard
-- Change password → logout → login with new password
-- Forgot password → email sent (verify API response)
-- Invalid reset token → error shown
-- Session expiry → auto-refresh (verify no interruption)
-- Logout → token invalidated → protected routes inaccessible
+### setup.spec.ts (5)
+1. Setup check returns not installed
+2. Navigate to /setup shows wizard
+3. Complete 3-step wizard (admin account → site config → review & install)
+4. Setup check returns installed
+5. Repeat install attempt rejected
 
-### posts.spec.ts — Post Lifecycle (6 cases)
+### auth.spec.ts (8)
+1. Login success → /dashboard
+2. Wrong password → error toast
+3. Unauthenticated /dashboard → redirect /login
+4. User menu visible after login
+5. Logout → session invalidated
+6. Forgot password → /forgot-password/sent
+7. Invalid email format → validation error
+8. Password too short → validation error
 
-- Create draft post with title/content
-- Edit post → revision created
-- Publish post → Public API returns it
-- Schedule post (set future publish date)
-- Unpublish → Public API no longer returns it
-- Soft delete → not in list
-- Restore from trash → visible again
-- Concurrent edit conflict → 409 (using API helper to simulate)
+### content.spec.ts (10)
+1. Navigate to posts list
+2. Create draft post (title + BlockNote editor)
+3. Post appears in list
+4. Publish post
+5. Unpublish post
+6. Soft delete post
+7. Navigate to categories
+8. Create category
+9. Navigate to tags
+10. Create tag
 
-### media.spec.ts — Media Management (4 cases)
+### media.spec.ts (5)
+1. Navigate to media library
+2. Upload image (react-dropzone)
+3. Media detail dialog shows info
+4. Search media by filename
+5. Delete media
 
-- Upload image → appears in media library with thumbnails
-- Upload invalid file type → error shown
-- Create post referencing image → delete image → reference protection error
-- Batch delete unreferenced media → success
-- Media search by filename
+### system.spec.ts (12) — Batch 12, test.fixme()
+1. Navigate to users list
+2. Create user with role assignment
+3. Navigate to roles list
+4. View role permissions
+5. Navigate to settings
+6. Update site setting
+7. Navigate to API keys
+8. Create API key
+9. Navigate to audit logs
+10. Navigate to comments
+11. Navigate to menus
+12. Navigate to redirects
 
-### rbac.spec.ts — Role-Based Access (5 cases)
+### rbac.spec.ts (8)
+1. Super sees all navigation items (users/roles/sites/settings)
+2. Admin sees management nav but NOT sites
+3. Editor sees content nav only (posts/categories/tags/media)
+4. Viewer sees content nav (read-only, no create buttons)
+5. Editor cannot access /dashboard/users → forbidden
+6. Viewer cannot see "New Post" button
+7. API 403: Editor → GET /api/v1/sites
+8. API 403: Viewer → POST /api/v1/posts
 
-- Viewer: no "New Post" button, no edit actions
-- Viewer: direct navigation to /dashboard/posts/new → 403/redirect
-- Editor: can create/edit posts, cannot access /dashboard/users
-- Admin: can access settings, cannot access user management
-- Super: full access to all pages
-- API-level 403: Editor calls Super-only endpoint via fetch
-
-### multisite.spec.ts — Multi-Site Isolation (5 cases)
-
-- Create site_a and site_b via UI
-- Create post in site_a with X-Site-Slug header
-- Verify site_b Public API does not return site_a's post
-- Create same-slug content in both sites → no conflict
-- Delete site → schema dropped, data gone
+### multisite.spec.ts (5)
+1. Create two sites via API
+2. Create posts in different sites
+3. Site A Public API only returns A posts
+4. Site B Public API only returns B posts
+5. Both sites visible in sites list
 
 ## Data Management
 
-1. **globalSetup** resets DB: truncate all tables or drop/recreate schemas + re-migrate
-2. **setup.spec.ts** calls setup/initialize → creates super admin
-3. **rbac.spec.ts** uses API helpers to create test users (editor, viewer)
-4. **Each spec file** creates its own test data via API, no cross-file dependencies beyond initial setup
-5. **storageState files** saved to `e2e/.auth/` for session reuse
-
-## Configuration
-
-### playwright.config.ts
-
-- `testDir: './e2e'`
-- `timeout: 30_000` (60s for setup spec)
-- `retries: 1` (CI: 2)
-- `fullyParallel: false` + `projects` with `dependencies` for ordered execution
-- `use.baseURL: 'http://localhost:4321'`
-- `use.trace: 'retain-on-failure'`
-- `use.screenshot: 'only-on-failure'`
-- `webServer`: optional, can auto-start `bun dev` in web/
-
-### Dependencies
-
-- `@playwright/test` (devDependency in web/package.json)
-- No MSW needed — real backend handles all API calls
-
-## Estimated Output
-
-32 test cases across 6 spec files, covering all P1 E2E scenarios from testing.md.
+1. globalSetup not used — setup.spec.ts handles initialization
+2. rbac.spec.ts beforeAll seeds 3 additional users (admin/editor/viewer) via API
+3. Each spec creates its own data, no cross-file dependencies beyond setup
+4. storageState not used — each test logs in fresh (simpler, more reliable)

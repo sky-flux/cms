@@ -11,31 +11,31 @@ test.describe.serial('Installation Wizard', () => {
 
   test('navigate to /setup shows wizard', async ({ page }) => {
     await page.goto('/setup');
-    await expect(page.getByText(/welcome to sky flux/i)).toBeVisible();
+    await expect(page.locator('#admin_display_name')).toBeVisible();
   });
 
   test('complete 3-step installation wizard', async ({ page }) => {
     await page.goto('/setup');
 
     // Step 1: Admin account
-    await page.getByLabel(/display name/i).fill(TEST_SUPER.displayName);
-    await page.getByLabel(/admin email/i).fill(TEST_SUPER.email);
-    await page.getByLabel('Password', { exact: true }).fill(TEST_SUPER.password);
-    await page.getByLabel(/confirm/i).fill(TEST_SUPER.password);
-    await page.getByRole('button', { name: /next/i }).click();
+    await page.locator('#admin_display_name').fill(TEST_SUPER.displayName);
+    await page.locator('#admin_email').fill(TEST_SUPER.email);
+    await page.locator('#password').fill(TEST_SUPER.password);
+    await page.locator('#confirmPassword').fill(TEST_SUPER.password);
+    await page.locator('button[type="submit"]').click();
 
     // Step 2: Site info
-    await page.getByLabel(/site name/i).fill(TEST_SITE.name);
-    await page.getByLabel(/site slug/i).fill(TEST_SITE.slug);
-    await page.getByLabel(/site url/i).fill(TEST_SITE.url);
-    await page.getByRole('button', { name: /next/i }).click();
+    await expect(page.locator('#site_name')).toBeVisible({ timeout: 5_000 });
+    await page.locator('#site_name').fill(TEST_SITE.name);
+    await page.locator('#site_slug').fill(TEST_SITE.slug);
+    await page.locator('#site_url').fill(TEST_SITE.url);
+    await page.locator('button[type="submit"]').click();
 
     // Step 3: Review & Install
-    await expect(page.getByText(TEST_SUPER.email)).toBeVisible();
+    await expect(page.getByText(TEST_SUPER.email)).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText(TEST_SITE.name)).toBeVisible();
-    await page.getByRole('button', { name: /install/i }).click();
+    await page.locator('button[type="submit"]').click();
 
-    // Should redirect to setup complete page
     await expect(page).toHaveURL(/\/setup\/complete/, { timeout: 15_000 });
   });
 
@@ -47,7 +47,6 @@ test.describe.serial('Installation Wizard', () => {
 
   test('repeat installation attempt is rejected', async ({ page }) => {
     await page.goto('/setup');
-    // InstallationGuard middleware should redirect away
     await expect(page).not.toHaveURL(/\/setup$/);
   });
 });

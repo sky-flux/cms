@@ -1,23 +1,15 @@
 import { type Page, expect } from '@playwright/test';
 import { API_BASE } from './constants';
 
-export async function loginViaUI(
-  page: Page,
-  email: string,
-  password: string,
-): Promise<void> {
+export async function loginViaUI(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
-  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.locator('#email').fill(email);
+  await page.locator('#password').fill(password);
+  await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
 }
 
-export async function loginViaAPI(
-  page: Page,
-  email: string,
-  password: string,
-): Promise<string> {
+export async function loginViaAPI(page: Page, email: string, password: string): Promise<string> {
   const resp = await page.request.post(`${API_BASE}/api/v1/auth/login`, {
     data: { email, password },
   });

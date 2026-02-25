@@ -52,10 +52,7 @@ export async function checkInstalled(): Promise<boolean> {
   return resp.data.installed;
 }
 
-export async function apiLogin(
-  email: string,
-  password: string,
-): Promise<string> {
+export async function apiLogin(email: string, password: string): Promise<string> {
   const resp = await apiCall<{
     success: boolean;
     data: { access_token: string };
@@ -65,7 +62,7 @@ export async function apiLogin(
 
 export async function createUser(
   token: string,
-  user: { display_name: string; email: string; password: string; role_id?: string },
+  user: { display_name: string; email: string; password: string; role: string },
   siteSlug = TEST_SITE.slug,
 ): Promise<{ id: string }> {
   const resp = await apiCall<{ success: boolean; data: { id: string } }>(
@@ -98,4 +95,23 @@ export async function createSite(
   site: { name: string; slug: string; domain?: string },
 ): Promise<void> {
   await apiCall('POST', '/api/v1/sites', site, token);
+}
+
+export async function seedTestUsers(
+  superToken: string,
+  users: Array<{ displayName: string; email: string; password: string; role: string }>,
+  siteSlug = TEST_SITE.slug,
+): Promise<void> {
+  for (const u of users) {
+    try {
+      await createUser(superToken, {
+        display_name: u.displayName,
+        email: u.email,
+        password: u.password,
+        role: u.role,
+      }, siteSlug);
+    } catch {
+      // User may already exist from previous run
+    }
+  }
 }
