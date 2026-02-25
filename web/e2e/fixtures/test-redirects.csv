@@ -1,0 +1,3 @@
+source_path,target_url,status_code
+/old-page,/new-page,301
+/legacy,/modern,302
