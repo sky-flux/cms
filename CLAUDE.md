@@ -84,6 +84,42 @@ db.NewDelete().Model(&post).WherePK().Exec(ctx)
 - 界面语言: react-i18next (zh-CN / en)
 - 代码质量: Biome (lint + format, 替代 ESLint + Prettier)
 
+## 测试驱动开发 (TDD)
+
+**铁律: 没有失败的测试，就不写生产代码。**
+
+### Red-Green-Refactor 循环
+
+1. **RED** — 写一个最小的失败测试，描述期望行为
+2. **验证 RED** — 运行测试，确认因功能缺失而失败（非语法错误）
+3. **GREEN** — 写最少的代码让测试通过，不多不少
+4. **验证 GREEN** — 运行测试，确认全部通过
+5. **REFACTOR** — 在保持绿灯的前提下清理代码
+
+### 禁止事项
+
+- 先写实现再补测试（测试立即通过 = 无法证明它测对了东西）
+- 跳过验证失败步骤（没看到红灯 = 不知道测试是否有效）
+- 保留「未经测试验证」的代码作为参考（删掉，从测试重新开始）
+
+### 测试命令
+
+```bash
+# Go — 单包测试
+go test ./internal/auth/... -v -count=1
+# Go — 单个测试函数
+go test ./internal/auth/... -run TestLoginService -v
+# Go — 全部（跳过需 Docker 的集成测试）
+go test ./... -short -count=1
+
+# 前端 — 单文件
+cd web && bun run vitest run src/components/auth/__tests__/LoginForm.test.tsx
+# 前端 — watch 模式
+cd web && bun run vitest src/components/auth/
+# 前端 — 全部
+cd web && bun run vitest run
+```
+
 ## 目录结构
 
 ```
@@ -150,11 +186,12 @@ go run ./cmd/cms --help                # 查看所有命令
 
 所有设计文档位于 `docs/`，编码前应先阅读相关文档。
 
-**编码工作流**: 实现某个功能前，按此顺序阅读：
+**编码工作流**: 实现某个功能前，按此顺序执行：
 1. `story.md` — 找到对应用户故事和验收标准
 2. `api.md` — 确认 API 端点设计
 3. `database.md` — 确认数据模型和索引
 4. `standard.md` — 遵循编码规范
+5. **TDD 循环** — 写失败测试 → 验证红灯 → 最小实现 → 验证绿灯 → 重构
 
 | 文档 | 内容 |
 |------|------|

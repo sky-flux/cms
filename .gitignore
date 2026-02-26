@@ -30,6 +30,12 @@ docker-compose.local.yml
 .DS_Store
 Thumbs.db
 
+# TLS certificates
+*.pem
+
+# Secrets
+secrets/
+
 # Coverage
 coverage.out
 coverage.html

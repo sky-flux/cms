@@ -153,7 +153,7 @@ Request
 | DELETE | /api/v1/site/api-keys/:id | Admin+ | 吊销 API Key |
 | GET | /api/v1/site/settings | Admin+ | 系统配置列表 |
 | PUT | /api/v1/site/settings | Super | 更新配置项 |
-| GET | /api/v1/site/audit-logs | Super | 审计日志 |
+| GET | /api/v1/site/audit | Super | 审计日志 |
 | GET | /api/v1/site/post-types | Viewer+ | 文章类型列表 |
 | POST | /api/v1/site/post-types | Admin+ | 创建文章类型 |
 | PUT | /api/v1/site/post-types/:id | Admin+ | 更新文章类型 |
@@ -653,9 +653,9 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
   "site_name": "My Blog",
   "site_slug": "blog",
   "site_url": "https://blog.example.com",
-  "admin_email": "admin@example.com",
-  "admin_password": "SecureP@ssw0rd",
-  "admin_display_name": "Admin",
+  "super_email": "admin@example.com",
+  "super_password": "SecureP@ssw0rd",
+  "super_name": "Admin",
   "locale": "zh-CN"
 }
 ```
@@ -667,9 +667,9 @@ RBAC 中间件在每次请求中从 `sfc_user_roles` 表获取用户角色（L1 
 | site_name | 必填，1-200 字符 |
 | site_slug | 必填，`^[a-z0-9_]{3,50}$`，不能是保留词（`public`、`pg_catalog`、`information_schema` 等） |
 | site_url | 必填，合法 URL |
-| admin_email | 必填，合法邮箱格式 |
-| admin_password | 必填，最少 8 字符，必须包含大小写字母 + 数字 + 特殊字符 |
-| admin_display_name | 必填，1-100 字符 |
+| super_email | 必填，合法邮箱格式 |
+| super_password | 必填，最少 8 字符，必须包含大小写字母 + 数字 + 特殊字符 |
+| super_name | 必填，1-100 字符 |
 | locale | 可选，默认 `zh-CN` |
 
 **Response 201**
@@ -2465,7 +2465,7 @@ alt_text: 图片描述（可选）
 
 ## 12. 审计日志 API（站点级，Super）
 
-### GET /api/v1/site/audit-logs
+### GET /api/v1/site/audit
 **描述**：查询审计日志（仅 Super）
 
 **Query Params**
@@ -4220,7 +4220,7 @@ func SetupRouter(r *gin.Engine) {
             }
 
             // 审计日志
-            siteScoped.GET("/audit-logs", handler.ListAuditLogs)
+            siteScoped.GET("/audit", handler.ListAudit)
 
             // 文章类型与自定义字段
             postTypes := siteScoped.Group("/post-types")

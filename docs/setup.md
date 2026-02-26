@@ -125,6 +125,54 @@ volumes:
   rustfsdata:
 ```
 
+### 本地 Docker 测试环境
+
+除了直接在宿主机运行前后端，还可以使用本地 Docker 测试完整部署流程。
+
+#### 生成本地 HTTPS 证书
+
+本地 Docker 环境使用 Caddy 反向代理，需要 TLS 证书实现 HTTPS。使用 [mkcert](https://github.com/FiloSottile/mkcert) 生成本地受信任的证书：
+
+```bash
+# 1. 安装 mkcert
+brew install mkcert                # macOS
+sudo apt install mkcert            # Ubuntu/Debian
+# 其他系统见 https://github.com/FiloSottile/mkcert#installation
+
+# 2. 安装本地 CA 到系统信任存储（仅首次需要）
+mkcert -install                    # macOS — 自动弹出密码对话框授权 Keychain
+sudo mkcert -install               # Linux — 需要 sudo 写入系统证书目录
+
+# 3. 在项目根目录生成 localhost 证书
+cd sky-flux-cms
+mkcert localhost
+# 生成文件：localhost.pem（证书）+ localhost-key.pem（私钥）
+
+# 4.（可选）手动添加证书到 macOS 系统信任存储（如 mkcert -install 未生效）
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain localhost.pem
+```
+
+> 生成的 `localhost.pem` 和 `localhost-key.pem` 已在 `.gitignore` 中排除，不会被提交到 Git。
+
+#### 启动本地 Docker 环境
+
+```bash
+# 启动本地 Docker 测试环境（包含 Caddy 反向代理）
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+
+# 访问地址
+# - HTTP:  http://localhost:3000
+# - HTTPS: https://localhost:3443
+# - 后端 API：通过 Caddy 代理到 localhost:3000/api/*
+```
+
+特点：
+- 使用 `Caddy` 作为反向代理，支持 HTTP 和 HTTPS
+- 所有服务运行在 Docker 中
+- 适合测试完整的 Docker 部署流程
+- 容器名称带 `-local` 后缀（cms-api-local, cms-web-local 等）
+
 ### 常用命令
 
 ```bash
@@ -310,7 +358,8 @@ sky-flux-cms/
 | `TOTP_ENCRYPTION_KEY` | — | 2FA 加密密钥（`make setup` 自动生成） |
 | `SERVER_PORT` | `8080` | 后端端口 |
 | `SERVER_MODE` | `debug` | 运行模式 |
-| `FRONTEND_URL` | `http://localhost:4321` | 前端地址 |
+| `FRONTEND_URL` | `http://localhost:3000` | 前端地址 |
+| `PUBLIC_API_URL` | `/api` | 前端访问的后端 API 地址（Caddy 代理） |
 
 完整环境变量清单见 [deployment.md §3](deployment.md#3-环境变量清单)。
 

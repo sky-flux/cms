@@ -1152,7 +1152,7 @@ export default function () {
 | 用例编号 | 测试场景 | 测试类型 | 预期结果 |
 |----------|----------|----------|----------|
 | SETUP-001 | 全新安装检查 | 集成 | POST /api/v1/setup/check → 返回 `{ "installed": false }` |
-| SETUP-002 | 执行初始化 | 集成 | POST /api/v1/setup/initialize { site_name, site_slug, admin_email, admin_password, ... } → 创建 public schema 表 + 第一个站点 schema + admin 用户 + sfc_user_roles(super) + 返回 JWT access_token |
+| SETUP-002 | 执行初始化 | 集成 | POST /api/v1/setup/initialize { site_name, site_slug, super_email, super_password, ... } → 创建 public schema 表 + 第一个站点 schema + admin 用户 + sfc_user_roles(super) + 返回 JWT access_token |
 | SETUP-003 | 安装后端点禁用 | 集成 | 安装完成后，POST /api/v1/setup/initialize → 返回 409 ALREADY_INSTALLED；POST /api/v1/setup/check → 返回 `{ "installed": true }` |
 | SETUP-004 | 并发安装竞争 | 集成 | 两个并发请求同时调用 /api/v1/setup/initialize → 只有一个成功（PostgreSQL advisory lock），另一个返回 409 ALREADY_INSTALLED |
 

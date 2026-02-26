@@ -927,7 +927,7 @@ And   安装完成后锁定向导入口，重定向至登录页
 - `/roles` — 角色权限管理
 - `/settings` — 站点设置
 - `/api-keys` — API Key 管理
-- `/audit-logs` — 审计日志
+- `/audit` — 审计日志
 - `/comments` — 评论审核
 - `/menus` — 导航菜单管理
 - `/redirects` — 重定向管理

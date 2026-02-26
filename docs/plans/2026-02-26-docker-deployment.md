@@ -234,14 +234,14 @@ Expected: 输出上述 8 行内容
 
 ```dockerfile
 # 阶段一：安装依赖
-FROM oven/bun:1-alpine AS deps
+FROM oven/bun:1.3.10-alpine AS deps
 
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 # 阶段二：构建
-FROM oven/bun:1-alpine AS builder
+FROM oven/bun:1.3.10-alpine AS builder
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -253,7 +253,7 @@ ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 RUN bun run build
 
 # 阶段三：运行
-FROM oven/bun:1-alpine
+FROM oven/bun:1.3.10-alpine
 
 RUN addgroup -S app && adduser -S app -G app
 
@@ -837,7 +837,7 @@ cat >> Makefile << 'EOF'
 
 docker-build:
 	docker build -t cms-backend:latest .
-	docker build -t cms-frontend:latest --build-arg PUBLIC_API_URL=http://localhost:8080 ./web
+	docker build -t cms-frontend:latest --build-arg PUBLIC_API_URL=/api ./web
 
 docker-push:
 	docker tag cms-backend:latest ghcr.io/sky-flux/cms-backend:latest
@@ -981,7 +981,7 @@ git commit -m "docs: update v1.0.0 status and simplify deployment.md"
 docker build -t cms-backend:test .
 
 # 构建前端镜像
-docker build -t cms-frontend:test --build-arg PUBLIC_API_URL=http://localhost:8080 ./web
+docker build -t cms-frontend:test --build-arg PUBLIC_API_URL=/api ./web
 
 # 验证镜像存在
 docker images | grep cms-
