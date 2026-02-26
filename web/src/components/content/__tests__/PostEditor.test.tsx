@@ -19,6 +19,19 @@ vi.mock('@blocknote/shadcn', () => ({
   ),
 }));
 
+// Mock CategorySelect and TagSelect to avoid async side-effects
+vi.mock('../CategorySelect', () => ({
+  CategorySelect: ({ value, onChange }: any) => (
+    <div data-testid="category-select">{value?.join(',')}</div>
+  ),
+}));
+
+vi.mock('../TagSelect', () => ({
+  TagSelect: ({ value, onChange }: any) => (
+    <div data-testid="tag-select">{value?.join(',')}</div>
+  ),
+}));
+
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -145,9 +158,9 @@ describe('PostEditor', () => {
     expect(screen.getByPlaceholderText('Enter post title...')).toBeInTheDocument();
   });
 
-  it('renders BlockNote editor area', () => {
+  it('renders BlockNote editor area', async () => {
     render(<PostEditor mode="create" />);
-    expect(screen.getByTestId('blocknote-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('blocknote-editor')).toBeInTheDocument();
   });
 
   it('renders metadata panel with categories section', () => {

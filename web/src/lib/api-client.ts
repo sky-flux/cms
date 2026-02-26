@@ -49,6 +49,15 @@ async function request<T>(
     ...opts?.headers,
   };
 
+  // Add X-Site-Slug header for site-scoped endpoints
+  if (typeof window !== 'undefined' && path.includes('/site/')) {
+    const { useUIStore } = await import('../stores/ui-store');
+    const siteSlug = useUIStore.getState().siteSlug;
+    if (siteSlug) {
+      headers['X-Site-Slug'] = siteSlug;
+    }
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
@@ -90,6 +99,15 @@ export async function requestFormData<T>(
   opts?: RequestOptions,
 ): Promise<T> {
   const headers: Record<string, string> = { ...opts?.headers };
+
+  // Add X-Site-Slug header for site-scoped endpoints
+  if (typeof window !== 'undefined' && path.includes('/site/')) {
+    const { useUIStore } = await import('../stores/ui-store');
+    const siteSlug = useUIStore.getState().siteSlug;
+    if (siteSlug) {
+      headers['X-Site-Slug'] = siteSlug;
+    }
+  }
 
   const res = await fetch(`${API_BASE}${path}`, {
     method,

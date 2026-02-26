@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { MoreHorizontal, Plus, Search } from 'lucide-react';
+import { Calendar, Eye, MoreHorizontal, Plus, Search } from 'lucide-react';
 
 import { DataTable } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -98,6 +98,18 @@ export function PostsTable({
               <DropdownMenuItem asChild>
                 <a href={`/dashboard/posts/${row.original.id}/edit`}>
                   {t('common.edit')}
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={`/dashboard/posts/${row.original.id}/view`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  {t('common.view')}
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={`/dashboard/posts/${row.original.id}/edit?schedule=true`}>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {t('content.schedule')}
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem

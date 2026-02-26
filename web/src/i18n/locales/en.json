@@ -16,7 +16,8 @@
     "email": "Email",
     "password": "Password",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "view": "View"
   },
   "nav": {
     "dashboard": "Dashboard",

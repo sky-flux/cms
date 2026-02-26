@@ -11,9 +11,10 @@ interface SettingsFormProps {
   settings: SettingItem[];
   onSave: (key: string, value: string) => void;
   savingKey: string | null;
+  errors?: Record<string, string>;
 }
 
-export function SettingsForm({ settings, onSave, savingKey }: SettingsFormProps) {
+export function SettingsForm({ settings, onSave, savingKey, errors = {} }: SettingsFormProps) {
   const { t } = useTranslation();
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
@@ -60,7 +61,11 @@ export function SettingsForm({ settings, onSave, savingKey }: SettingsFormProps)
               <Input
                 value={getValue(item)}
                 onChange={(e) => handleChange(item.key, e.target.value)}
+                aria-invalid={!!errors[item.key]}
               />
+              {errors[item.key] && (
+                <p className="text-sm text-destructive mt-1">{errors[item.key]}</p>
+              )}
             </div>
             <Button
               size="sm"

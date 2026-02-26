@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { adminNavSections } from './nav-items';
 import { api, ApiError } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/auth-store';
+import { useUIStore } from '@/stores/ui-store';
 import { I18nProvider } from '@/components/providers/I18nProvider';
 
 interface DashboardShellProps {
@@ -11,10 +12,17 @@ interface DashboardShellProps {
   children?: ReactNode;
 }
 
+interface Site {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface AuthUser {
   id: string;
   email: string;
   display_name: string;
+  sites?: Site[];
 }
 
 export function DashboardShell({ currentPath, children }: DashboardShellProps) {
@@ -22,6 +30,7 @@ export function DashboardShell({ currentPath, children }: DashboardShellProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const setSiteSlug = useUIStore((s) => s.setSiteSlug);
 
   useEffect(() => {
     // Fetch user info on mount
@@ -30,6 +39,10 @@ export function DashboardShell({ currentPath, children }: DashboardShellProps) {
         const resp = await api.get<{ success: boolean; data: AuthUser }>('/v1/auth/me');
         if (resp.success && resp.data) {
           setUser(resp.data);
+          // Set the first site as the active site
+          if (resp.data.sites && resp.data.sites.length > 0) {
+            setSiteSlug(resp.data.sites[0].slug);
+          }
         }
       } catch (err) {
         // If unauthorized, redirect to login
@@ -44,7 +57,7 @@ export function DashboardShell({ currentPath, children }: DashboardShellProps) {
     };
 
     fetchUser();
-  }, []);
+  }, [setSiteSlug]);
 
   const handleLogout = async () => {
     try {

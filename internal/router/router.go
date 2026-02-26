@@ -18,6 +18,7 @@ import (
 	"github.com/sky-flux/cms/internal/category"
 	"github.com/sky-flux/cms/internal/comment"
 	"github.com/sky-flux/cms/internal/config"
+	"github.com/sky-flux/cms/internal/dashboard"
 	"github.com/sky-flux/cms/internal/feed"
 	"github.com/sky-flux/cms/internal/media"
 	sitemenu "github.com/sky-flux/cms/internal/menu"
@@ -252,6 +253,12 @@ func Setup(engine *gin.Engine, db *bun.DB, rdb *redis.Client, meili meilisearch.
 	siteScoped.Use(middleware.AuditContext())
 	siteScoped.Use(middleware.Auth(jwtMgr))
 	siteScoped.Use(middleware.RBAC(rbacSvc))
+
+	// Dashboard statistics
+	dashboardRepo := dashboard.NewRepository(db)
+	dashboardSvc := dashboard.NewService(dashboardRepo)
+	dashboardHandler := dashboard.NewHandler(dashboardSvc)
+	siteScoped.GET("/dashboard/stats", dashboardHandler.GetStats)
 
 	// Settings
 	settingsRepo := system.NewConfigRepo(db)

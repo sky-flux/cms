@@ -1,0 +1,126 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+const { slug } = Astro.params;
+
+// Fetch post data from public API
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
+let post = null;
+let error = null;
+
+try {
+  const headers: Record<string, string> = {
+    'X-API-Key': import.meta.env.PUBLIC_API_KEY || '',
+    // Use default site slug for development
+    'X-Site-Slug': import.meta.env.PUBLIC_SITE_SLUG || 'default',
+  };
+
+  const response = await fetch(`${API_BASE}/api/public/v1/posts/${slug}`, {
+    headers,
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    post = data.data;
+  } else if (response.status === 404) {
+    return Astro.redirect('/404');
+  } else {
+    error = 'Failed to load post';
+  }
+} catch (e) {
+  console.error('Error fetching post:', e);
+  error = 'Failed to load post';
+}
+
+if (!post) {
+  return Astro.redirect('/404');
+}
+
+const title = post.seo?.meta_title || post.title;
+const description = post.seo?.meta_description || post.excerpt;
+---
+
+<BaseLayout title={title}>
+  <article class="max-w-4xl mx-auto px-4 py-8">
+    {error && (
+      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        {error}
+      </div>
+    )}
+
+    {post && (
+      <>
+        <header class="mb-8">
+          <h1 class="text-4xl font-bold mb-4">{post.title}</h1>
+
+          <div class="flex items-center gap-4 text-sm text-gray-600 mb-4">
+            <span>By {post.author.display_name}</span>
+            <span>•</span>
+            <time datetime={post.published_at}>
+              {new Date(post.published_at).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </time>
+            {post.view_count > 0 && (
+              <>
+                <span>•</span>
+                <span>{post.view_count} views</span>
+              </>
+            )}
+          </div>
+
+          {post.cover_image && (
+            <img
+              src={post.cover_image.url}
+              alt={post.title}
+              class="w-full h-auto rounded-lg mb-6"
+            />
+          )}
+
+          {post.excerpt && (
+            <p class="text-xl text-gray-600 mb-6">{post.excerpt}</p>
+          )}
+
+          {post.categories && post.categories.length > 0 && (
+            <div class="flex gap-2 mb-4">
+              {post.categories.map((cat: any) => (
+                <a
+                  href={`/categories/${cat.slug}`}
+                  class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200"
+                >
+                  {cat.name}
+                </a>
+              ))}
+            </div>
+          )}
+
+          {post.tags && post.tags.length > 0 && (
+            <div class="flex gap-2 flex-wrap">
+              {post.tags.map((tag: any) => (
+                <a
+                  href={`/tags/${tag.name}`}
+                  class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                >
+                  #{tag.name}
+                </a>
+              ))}
+            </div>
+          )}
+        </header>
+
+        <div class="prose prose-lg max-w-none mb-8" set:html={post.content} />
+
+        <footer class="border-t pt-6 mt-8">
+          <div class="flex items-center gap-4">
+            <div>
+              <p class="font-semibold">{post.author.display_name}</p>
+              <p class="text-sm text-gray-600">Author</p>
+            </div>
+          </div>
+        </footer>
+      </>
+    )}
+  </article>
+</BaseLayout>

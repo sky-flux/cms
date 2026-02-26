@@ -18,6 +18,7 @@ export default defineConfig({
   projects: [
     { name: 'setup', testMatch: 'setup.spec.ts' },
     { name: 'auth', testMatch: 'auth.spec.ts', dependencies: ['setup'] },
+    { name: 'dashboard', testMatch: 'dashboard.spec.ts', dependencies: ['setup'] },
     { name: 'content', testMatch: 'content.spec.ts', dependencies: ['setup'] },
     { name: 'media', testMatch: 'media.spec.ts', dependencies: ['setup'] },
     { name: 'system', testMatch: 'system.spec.ts', dependencies: ['setup'] },

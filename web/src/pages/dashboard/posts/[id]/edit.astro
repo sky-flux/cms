@@ -6,5 +6,5 @@ const { id } = Astro.params;
 ---
 
 <DashboardLayout title="Edit Post">
-  <PostEditorPage client:load mode="edit" postId={id} />
+  <PostEditorPage client:only="react" mode="edit" postId={id} />
 </DashboardLayout>

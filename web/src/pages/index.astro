@@ -1,13 +1,18 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 
+// Detect environment and use appropriate API URL
+// In dev: use localhost:8080 directly (SSR doesn't go through Vite proxy)
+// In prod (Docker): use internal container name
+const isDev = import.meta.env.DEV;
+const apiBase = isDev ? 'http://localhost:8080' : 'http://api:8080';
+
 // Check installation status on server by calling backend directly
 let isInstalled = false;
 let setupCheckError = false;
 
 try {
-  // In SSR, we need to use absolute URL to backend
-  const apiURL = 'http://api:8080/api/v1/setup/check';
+  const apiURL = `${apiBase}/api/v1/setup/check`;
   const response = await fetch(apiURL, {
     method: 'POST',
     headers: {

@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCreateBlockNote } from '@blocknote/react';
 import { toast } from 'sonner';
-import { postsApi, categoriesApi } from '@/lib/content-api';
+import { postsApi } from '@/lib/content-api';
 import type { UpdatePostDTO, CreatePostDTO } from '@/lib/content-api';
 import { ApiError } from '@/lib/api-client';
 import { useEditorStore } from '@/stores/editor-store';
+import { CategorySelect } from './CategorySelect';
+import { TagSelect } from './TagSelect';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -69,8 +71,10 @@ export function PostEditor({ mode, postId, onCreated }: PostEditorProps) {
   const lastSavedRef = useRef<string>('');
   const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // BlockNote editor
-  const editor = useCreateBlockNote();
+  // Initial content state for BlockNote editor
+  const [initialContent, setInitialContent] = useState<any[] | undefined | "loading">(
+    mode === 'edit' ? "loading" : undefined
+  );
 
   // Fetch post data in edit mode
   const { data: postData, isLoading: postLoading } = useQuery({
@@ -79,13 +83,30 @@ export function PostEditor({ mode, postId, onCreated }: PostEditorProps) {
     enabled: mode === 'edit' && !!postId,
   });
 
-  // Fetch categories for the multi-select
-  const { data: categoriesData } = useQuery({
-    queryKey: ['categories-tree'],
-    queryFn: () => categoriesApi.tree(),
+  // Load initial content when post data is fetched
+  useEffect(() => {
+    if (mode === 'edit' && postData?.data) {
+      const post = postData.data;
+      console.log('[PostEditor] Setting initialContent:', post.content_json);
+      if (post.content_json && Array.isArray(post.content_json)) {
+        setInitialContent(post.content_json);
+        // Update editor content after it's created
+        if (editor) {
+          editor.replaceBlocks(editor.document, post.content_json);
+        }
+      } else {
+        setInitialContent(undefined);
+      }
+    }
+  }, [mode, postData, editor]);
+
+  // BlockNote editor - only create when initialContent is ready
+  console.log('[PostEditor] Creating editor with initialContent:', initialContent);
+  const editor = useCreateBlockNote({
+    initialContent: initialContent === "loading" ? undefined : initialContent,
   });
 
-  // Populate form from loaded post
+  // Populate form fields from loaded post
   useEffect(() => {
     if (postData?.data) {
       const post = postData.data;
@@ -241,12 +262,16 @@ export function PostEditor({ mode, postId, onCreated }: PostEditorProps) {
           className="text-2xl font-bold h-14 border-0 border-b rounded-none focus-visible:ring-0 px-0"
         />
         <div className="flex-1 min-h-[400px] border rounded-lg overflow-hidden">
-          <Suspense fallback={<EditorLoading />}>
-            <BlockNoteView
-              editor={editor}
-              theme="light"
-            />
-          </Suspense>
+          {initialContent === "loading" ? (
+            <EditorLoading />
+          ) : (
+            <Suspense fallback={<EditorLoading />}>
+              <BlockNoteView
+                editor={editor}
+                theme="light"
+              />
+            </Suspense>
+          )}
         </div>
       </div>
 
@@ -266,23 +291,17 @@ export function PostEditor({ mode, postId, onCreated }: PostEditorProps) {
         {/* Categories */}
         <Card className="p-4">
           <Label className="text-sm font-medium">{t('content.postCategories')}</Label>
-          <Input
-            placeholder={t('content.searchPlaceholder')}
-            className="mt-2"
-            value={categoryIds.join(', ')}
-            onChange={(e) => setCategoryIds(e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
-          />
+          <div className="mt-2">
+            <CategorySelect value={categoryIds} onChange={setCategoryIds} />
+          </div>
         </Card>
 
         {/* Tags */}
         <Card className="p-4">
           <Label className="text-sm font-medium">{t('content.postTags')}</Label>
-          <Input
-            placeholder={t('content.searchPlaceholder')}
-            className="mt-2"
-            value={tagIds.join(', ')}
-            onChange={(e) => setTagIds(e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
-          />
+          <div className="mt-2">
+            <TagSelect value={tagIds} onChange={setTagIds} />
+          </div>
         </Card>
 
         {/* Cover Image */}

@@ -33,8 +33,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // If no cache or expired, check installation status
   if (!cached || now - JSON.parse(cached).timestamp >= CACHE_DURATION) {
     try {
-      const apiURL = new URL('/api/v1/setup/check', context.url.origin);
-      const response = await fetch(apiURL.toString(), {
+      // Use appropriate API base URL based on environment
+      const isDev = import.meta.env.DEV;
+      const apiBase = isDev ? 'http://localhost:8080' : 'http://api:8080';
+      const apiURL = `${apiBase}/api/v1/setup/check`;
+
+      const response = await fetch(apiURL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

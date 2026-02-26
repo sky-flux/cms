@@ -16,7 +16,8 @@
     "email": "邮箱",
     "password": "密码",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "view": "查看"
   },
   "nav": {
     "dashboard": "仪表盘",

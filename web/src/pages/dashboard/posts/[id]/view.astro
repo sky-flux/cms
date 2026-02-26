@@ -1,0 +1,143 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { api } from '@/lib/api-client';
+
+const { id } = Astro.params;
+
+// Fetch post data
+let post = null;
+let error = null;
+
+try {
+  const response = await api.get(`/v1/site/posts/${id}`);
+  if (response.success && response.data) {
+    post = response.data;
+  }
+} catch (e) {
+  console.error('Error fetching post:', e);
+  error = 'Failed to load post';
+}
+
+if (!post) {
+  return Astro.redirect('/dashboard/posts');
+}
+
+const title = post.title;
+---
+
+<DashboardLayout title={`View: ${title}`}>
+  <div class="p-6">
+    {error && (
+      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+        {error}
+      </div>
+    )}
+
+    {post && (
+      <article class="max-w-4xl mx-auto">
+        <header class="mb-8">
+          <div class="flex items-center justify-between mb-4">
+            <a
+              href="/dashboard/posts"
+              class="text-sm text-gray-600 hover:text-gray-900"
+            >
+              ← Back to Posts
+            </a>
+            <div class="flex gap-2">
+              <a
+                href={`/dashboard/posts/${id}/edit`}
+                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Edit
+              </a>
+              <a
+                href={`/posts/${post.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                View Public
+              </a>
+            </div>
+          </div>
+
+          <h1 class="text-4xl font-bold mb-4">{post.title}</h1>
+
+          <div class="flex items-center gap-4 text-sm text-gray-600 mb-4">
+            <span>By {post.author.display_name}</span>
+            <span>•</span>
+            <span>Status: <span class="font-semibold capitalize">{post.status}</span></span>
+            <span>•</span>
+            <time datetime={post.created_at}>
+              {new Date(post.created_at).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </time>
+            {post.view_count > 0 && (
+              <>
+                <span>•</span>
+                <span>{post.view_count} views</span>
+              </>
+            )}
+          </div>
+
+          {post.cover_image && (
+            <img
+              src={post.cover_image.url}
+              alt={post.title}
+              class="w-full h-auto rounded-lg mb-6"
+            />
+          )}
+
+          {post.excerpt && (
+            <p class="text-xl text-gray-600 mb-6">{post.excerpt}</p>
+          )}
+
+          {post.categories && post.categories.length > 0 && (
+            <div class="flex gap-2 mb-4">
+              {post.categories.map((cat: any) => (
+                <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                  {cat.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {post.tags && post.tags.length > 0 && (
+            <div class="flex gap-2 flex-wrap">
+              {post.tags.map((tag: any) => (
+                <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm">
+                  #{tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </header>
+
+        <div class="prose prose-lg max-w-none mb-8" set:html={post.content} />
+
+        {post.seo && (
+          <footer class="border-t pt-6 mt-8">
+            <h3 class="text-lg font-semibold mb-4">SEO Information</h3>
+            <dl class="space-y-2">
+              {post.seo.meta_title && (
+                <div>
+                  <dt class="text-sm font-medium text-gray-600">Meta Title</dt>
+                  <dd class="text-sm">{post.seo.meta_title}</dd>
+                </div>
+              )}
+              {post.seo.meta_description && (
+                <div>
+                  <dt class="text-sm font-medium text-gray-600">Meta Description</dt>
+                  <dd class="text-sm">{post.seo.meta_description}</dd>
+                </div>
+              )}
+            </dl>
+          </footer>
+        )}
+      </article>
+    )}
+  </div>
+</DashboardLayout>
