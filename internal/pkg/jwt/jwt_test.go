@@ -20,7 +20,7 @@ func newTestManager(t *testing.T) (*jwt.Manager, *miniredis.Miniredis) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	mgr := jwt.NewManager(testSecret, 15*time.Minute, 5*time.Minute, rdb)
+	mgr := jwt.NewManager(testSecret, 15*time.Minute, 5*time.Minute, 7*24*time.Hour, rdb)
 	return mgr, mr
 }
 
@@ -47,7 +47,7 @@ func TestSignAndVerify_TempToken(t *testing.T) {
 
 func TestVerify_ExpiredToken(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{Addr: "localhost:0"})
-	mgr := jwt.NewManager(testSecret, -1*time.Second, -1*time.Second, rdb)
+	mgr := jwt.NewManager(testSecret, -1*time.Second, -1*time.Second, -1*time.Second, rdb)
 	token, _ := mgr.SignAccessToken("user-789")
 	_, err := mgr.Verify(token)
 	assert.Error(t, err)

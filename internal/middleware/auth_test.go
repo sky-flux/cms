@@ -24,7 +24,7 @@ func newAuthTestSetup(t *testing.T) (*jwt.Manager, *gin.Engine) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	mgr := jwt.NewManager(authTestSecret, 15*time.Minute, 5*time.Minute, rdb)
+	mgr := jwt.NewManager(authTestSecret, 15*time.Minute, 5*time.Minute, 7*24*time.Hour, rdb)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(middleware.Auth(mgr))

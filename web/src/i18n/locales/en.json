@@ -64,6 +64,7 @@
     "resetPasswordDescription": "Enter your new password below",
     "newPassword": "New password",
     "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Enter password again",
     "resetPasswordSubmit": "Reset password",
     "resetPasswordSuccess": "Password reset successfully. Please sign in.",
     "resetTokenInvalid": "This reset link is invalid or has expired.",

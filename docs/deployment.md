@@ -391,7 +391,7 @@ exec "$@"
 # =========================================
 # 阶段一：安装依赖
 # =========================================
-FROM oven/bun:1.3.10-alpine AS deps
+FROM oven/bun:1-alpine AS deps
 
 WORKDIR /app
 COPY package.json bun.lock ./
@@ -400,7 +400,7 @@ RUN bun install --frozen-lockfile
 # =========================================
 # 阶段二：构建
 # =========================================
-FROM oven/bun:1.3.10-alpine AS builder
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -414,7 +414,7 @@ RUN bun run build
 # =========================================
 # 阶段三：运行（SSR）
 # =========================================
-FROM oven/bun:1.3.10-alpine AS runner
+FROM oven/bun:1-alpine AS runner
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 

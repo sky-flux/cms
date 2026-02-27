@@ -87,7 +87,7 @@ function Step1Form({
           id="super_email"
           type="email"
           placeholder={t('auth.setupAdminEmailPlaceholder')}
-          autoComplete="email"
+          autoComplete="username email"
           {...register('super_email')}
           aria-invalid={!!errors.super_email}
         />
@@ -116,7 +116,8 @@ function Step1Form({
         <Input
           id="confirmPassword"
           type="password"
-          autoComplete="new-password"
+          placeholder={t('auth.confirmPasswordPlaceholder')}
+          autoComplete="off"
           {...register('confirmPassword')}
           aria-invalid={!!errors.confirmPassword}
         />

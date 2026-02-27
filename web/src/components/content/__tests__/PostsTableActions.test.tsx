@@ -61,16 +61,14 @@ describe('PostsTable actions dropdown', () => {
     expect(screen.getByText('delete')).toBeInTheDocument();
   });
 
-  it('renders View link with target="_blank" and correct href', async () => {
+  it('renders View link with correct href to backend preview page', async () => {
     const user = userEvent.setup();
     render(<PostsTable {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: 'actions' }));
 
     const viewLink = screen.getByText('view').closest('a');
-    expect(viewLink).toHaveAttribute('href', '/posts/test-post');
-    expect(viewLink).toHaveAttribute('target', '_blank');
-    expect(viewLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(viewLink).toHaveAttribute('href', '/dashboard/posts/post-1/view');
   });
 
   it('renders Schedule link pointing to edit page with schedule param', async () => {

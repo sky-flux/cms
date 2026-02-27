@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useTranslation, I18nextProvider } from 'react-i18next';
+import { toast, Toaster } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CategoryTree } from './CategoryTree';
@@ -15,6 +15,8 @@ import {
   type ReorderItem,
 } from '@/lib/content-api';
 import { ApiError } from '@/lib/api-client';
+import { queryClient } from '@/lib/query-client';
+import i18n from '@/i18n/config';
 
 function flattenCategories(
   nodes: CategoryNode[],
@@ -30,7 +32,7 @@ function flattenCategories(
   return result;
 }
 
-export function CategoriesPage() {
+function CategoriesPageInner() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -170,5 +172,16 @@ export function CategoriesPage() {
         variant="danger"
       />
     </div>
+  );
+}
+
+export function CategoriesPage() {
+  return (
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <CategoriesPageInner />
+        <Toaster />
+      </QueryClientProvider>
+    </I18nextProvider>
   );
 }

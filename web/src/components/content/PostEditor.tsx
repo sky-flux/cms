@@ -90,21 +90,23 @@ export function PostEditor({ mode, postId, onCreated }: PostEditorProps) {
       console.log('[PostEditor] Setting initialContent:', post.content_json);
       if (post.content_json && Array.isArray(post.content_json)) {
         setInitialContent(post.content_json);
-        // Update editor content after it's created
-        if (editor) {
-          editor.replaceBlocks(editor.document, post.content_json);
-        }
       } else {
         setInitialContent(undefined);
       }
     }
-  }, [mode, postData, editor]);
+  }, [mode, postData]);
 
   // BlockNote editor - only create when initialContent is ready
-  console.log('[PostEditor] Creating editor with initialContent:', initialContent);
   const editor = useCreateBlockNote({
     initialContent: initialContent === "loading" ? undefined : initialContent,
   });
+
+  // Update editor content when initialContent changes (after editor is created)
+  useEffect(() => {
+    if (editor && initialContent && initialContent !== "loading" && Array.isArray(initialContent)) {
+      editor.replaceBlocks(editor.document, initialContent);
+    }
+  }, [editor, initialContent]);
 
   // Populate form fields from loaded post
   useEffect(() => {
@@ -176,6 +178,8 @@ export function PostEditor({ mode, postId, onCreated }: PostEditorProps) {
   const buildPostData = useCallback(() => {
     const contentJson = editor.document;
     const contentHtml = editor.domElement?.innerHTML || '';
+    console.log('[PostEditor] Building save data, editor.document:', contentJson);
+    console.log('[PostEditor] Editor domElement:', editor.domElement);
     return {
       title,
       slug,

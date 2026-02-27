@@ -64,6 +64,7 @@
     "resetPasswordDescription": "请在下方输入新密码",
     "newPassword": "新密码",
     "confirmPassword": "确认密码",
+    "confirmPasswordPlaceholder": "再次输入密码",
     "resetPasswordSubmit": "重置密码",
     "resetPasswordSuccess": "密码重置成功，请重新登录。",
     "resetTokenInvalid": "此重置链接无效或已过期。",

@@ -1,5 +1,5 @@
 # 阶段一：安装依赖
-FROM oven/bun:1.3.10-alpine AS deps
+FROM oven/bun:1-alpine AS deps
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 # 阶段二：构建
-FROM oven/bun:1.3.10-alpine AS builder
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 RUN bun run build
 
 # 阶段三：运行
-FROM oven/bun:1.3.10-alpine AS runtime
+FROM oven/bun:1-alpine AS runtime
 
 # 创建非 root 用户
 RUN addgroup -S app && adduser -S app -G app
