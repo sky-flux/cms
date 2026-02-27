@@ -1,0 +1,1 @@
+export { PostsTable } from './PostsTable';
