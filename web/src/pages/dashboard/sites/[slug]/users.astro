@@ -1,9 +1,0 @@
----
-import DashboardLayout from '@/layouts/DashboardLayout.astro';
-import { SitesPage } from '@/components/system/SitesPage';
-const { slug } = Astro.params;
----
-
-<DashboardLayout title="Site Users - Sky Flux CMS">
-  <SitesPage initialSiteSlug={slug} client:load />
-</DashboardLayout>
