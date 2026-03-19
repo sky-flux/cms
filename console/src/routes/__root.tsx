@@ -1,12 +1,9 @@
 import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
-import PostHogProvider from '../integrations/posthog/provider'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
-import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
-import StoreDevtools from '../lib/demo-store-devtools'
-import { getLocale } from '#/paraglide/runtime'
+import { getLocale } from '@/paraglide/runtime'
 
 import type { QueryClient } from '@tanstack/react-query'
 
@@ -25,23 +22,14 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootComponent() {
   return (
-    <PostHogProvider>
-      <TanStackQueryProvider>
-        <Outlet />
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-            StoreDevtools,
-            TanStackQueryDevtools,
-          ]}
-        />
-      </TanStackQueryProvider>
-    </PostHogProvider>
+    <TanStackQueryProvider>
+      <Outlet />
+      {import.meta.env.DEV && (
+        <>
+          <TanStackRouterDevtools position="bottom-right" />
+          <ReactQueryDevtools buttonPosition="bottom-left" />
+        </>
+      )}
+    </TanStackQueryProvider>
   )
 }
