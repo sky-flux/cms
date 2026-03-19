@@ -65,27 +65,33 @@ Sky Flux CMS 重构为三个子项目的 Monorepo，编译为单一 Go 二进制
 
 ## 3. 整体架构
 
+### Go 模块结构
+
+单一根 `go.mod`（模块路径 `github.com/sky-flux/cms`）。所有 Go 代码放在根级目录下（`cmd/`、`internal/`），**不放在 `api/` 子目录下**——因为 `go:embed` 和 `internal/` 可见性规则在根级最简单：
+
 ### Monorepo 目录结构
 
 ```
-sky-flux-cms/
-├── api/                         # Go 后端（主二进制）
-│   ├── cmd/cms/
-│   │   ├── main.go
-│   │   ├── root.go              # Cobra root + koanf 配置加载
-│   │   ├── serve.go             # cms serve
-│   │   ├── install.go           # cms install（交互式向导）
-│   │   └── migrate.go           # cms migrate up|down|status
-│   ├── internal/
-│   │   ├── identity/            # BC: 用户/认证/权限
-│   │   ├── content/             # BC: 文章/分类/标签/评论
-│   │   ├── media/               # BC: 文件存储
-│   │   ├── site/                # BC: 站点配置/菜单/重定向
-│   │   ├── delivery/            # BC: RSS/Public API/预览
-│   │   └── platform/            # BC: 安装向导/审计/系统配置
-│   ├── migrations/              # bun Go code migrations
-│   ├── config/                  # koanf 配置结构体
-│   └── embed.go                 # go:embed console/dist + web/static
+sky-flux-cms/                    # go.mod 在此（模块根）
+├── cmd/cms/                     # Cobra CLI 入口（主二进制）
+│   ├── main.go
+│   ├── root.go
+│   ├── serve.go
+│   ├── install.go
+│   └── migrate.go
+├── internal/                    # DDD 领域代码（Go internal 包可见性）
+│   ├── identity/
+│   ├── content/
+│   ├── media/
+│   ├── site/
+│   ├── delivery/
+│   ├── platform/
+│   └── shared/                  # apperror、middleware、event bus
+├── migrations/                  # bun Go code migrations
+├── config/                      # koanf 配置加载
+├── embed.go                     # go:embed console/dist + web/static
+├── go.mod
+├── go.sum
 ├── console/                     # React 19 SPA
 │   ├── src/
 │   │   ├── features/            # Feature-based 架构
@@ -200,6 +206,82 @@ internal/content/
 
 ---
 
+## 5.5 v1 数据库 Schema 策略
+
+### 单站点 = 单 Schema
+
+v1 所有表在 PostgreSQL 默认 `public` schema 中，无多站点 Schema 隔离：
+
+| 表名 | 来源 | v1 变更 |
+|------|------|---------|
+| `sfc_users` | 现有迁移 1 | 保留 |
+| `sfc_roles`, `sfc_apis`, `sfc_role_apis` 等 9 张 RBAC 表 | 现有迁移 2 | 保留 |
+| `sfc_refresh_tokens`, `sfc_password_reset_tokens`, `sfc_user_totp` | 现有迁移 1 | 保留 |
+| `sfc_configs` | 现有迁移 1 | 保留 |
+| `sfc_sites` | 现有迁移 1 | **保留但简化**（v1 仅 1 条记录） |
+| `sfc_posts`, `sfc_categories`, `sfc_tags` 等内容表 | **新建迁移** | 原 `site_{slug}` schema 内容表移入 `public`，无 `site_id` 列 |
+
+### 迁移计划
+
+| 编号 | 内容 | 来源 |
+|------|------|------|
+| 1 | 枚举类型 + 核心表（users, sites, tokens, configs） | 复用现有迁移 1 |
+| 2 | RBAC 9 张表 | 复用现有迁移 2 |
+| 3 | Seed 内置角色 + 权限模板 | 复用现有迁移 4 |
+| 4 | 内容表（posts, categories, tags, media, comments, menus, redirects, audits） | **新写**，直接在 public schema |
+| 5 | 索引 + 约束 + 触发器 | **新写** |
+
+**删除**：现有迁移 3（多站点 schema 占位符）、`internal/schema/`（动态 CREATE SCHEMA）。
+
+### 表名规范
+
+- 全局表：`sfc_` 前缀（如 `sfc_users`、`sfc_roles`）
+- 内容表：`sfc_` 前缀（如 `sfc_posts`、`sfc_categories`）——v1 无 `site_` 中缀
+- v2 多站点时内容表迁移到 `site_{slug}` schema 并加 `sfc_site_` 前缀
+
+---
+
+## 5.6 Web 公共站点（Templ + HTMX）
+
+### v1 页面列表
+
+| 页面 | URL | 渲染方式 |
+|------|-----|----------|
+| 首页 | `/` | Templ SSR，最新文章列表 |
+| 文章详情 | `/posts/:slug` | Templ SSR |
+| 分类归档 | `/categories/:slug` | Templ SSR + HTMX 分页 |
+| 标签归档 | `/tags/:slug` | Templ SSR + HTMX 分页 |
+| 搜索结果 | `/search?q=` | HTMX 局部刷新 |
+| 关于/自定义页面 | `/:slug` | Templ SSR（Page 类型文章） |
+
+### Handler 模式
+
+Web 路由使用 **纯 Chi handler**（非 Huma），返回 HTML：
+
+```go
+// internal/delivery/web/handler.go
+func (h *WebHandler) PostDetail(w http.ResponseWriter, r *http.Request) {
+    slug := chi.URLParam(r, "slug")
+    post, err := h.postQuery.GetBySlug(r.Context(), slug)
+    if err != nil { ... }
+    templates.PostPage(post).Render(r.Context(), w)
+}
+```
+
+### Tailwind CSS 构建
+
+```
+源文件:   web/styles/input.css    （@import "tailwindcss"）
+输出文件:  web/static/app.css     （go:embed 目标）
+HTMX:    web/static/htmx.min.js  （下载到本地，非 CDN）
+```
+
+### v1 主题策略
+
+**v1 硬编码内置主题**，不可自定义。所有 `.templ` 文件在 `web/templates/` 目录，直接编译进二进制。v2 再开放 `themes/` 目录支持用户覆盖。
+
+---
+
 ## 6. 认证 & 安全
 
 ### 策略
@@ -256,6 +338,10 @@ r.Route("/api/v1", func(r chi.Router) {
 
 ```go
 // embed.go（项目根目录，与 go.mod 同级）
+package cms // 根包名 cms，模块路径 github.com/sky-flux/cms
+
+import "embed"
+
 //go:embed all:console/dist
 var ConsoleFS embed.FS
 
@@ -263,34 +349,80 @@ var ConsoleFS embed.FS
 var WebStaticFS embed.FS
 ```
 
-`api/cmd/cms` 引用根包的 `ConsoleFS` 和 `WebStaticFS`，无需跨模块引用。
+`api/cmd/cms/main.go` 通过 import 引用：
+
+```go
+package main
+
+import (
+    rootfs "github.com/sky-flux/cms" // 导入根包获取 embed.FS
+)
+
+// 注册静态文件路由时使用 rootfs.ConsoleFS、rootfs.WebStaticFS
+```
+
+**开发模式处理**：`console/dist` 不存在时 `go:embed` 会编译失败。解决方案：
+
+```bash
+# 首次克隆后必须先构建 console：
+make build-console   # cd console && bun run build
+# 或使用空目录占位（开发时）：
+mkdir -p console/dist && touch console/dist/.gitkeep
+```
+
+`console/dist/.gitkeep` 提交到 git，确保 `go:embed` 始终有匹配文件。开发时 Go 代理 `/console/*` 到 Vite `:3000`（通过 `--dev` flag 切换）。
 
 ### 构建流程
 
 ```makefile
 build:
     cd console && bun run build
-    cd web && templ generate
-    cd web && tailwindcss -i styles/input.css -o static/app.css --minify
-    cd api && go build -ldflags="-s -w" -o ../cms ./cmd/cms
+    templ generate
+    tailwindcss -i web/styles/input.css -o web/static/app.css --minify
+    go build -ldflags="-s -w" -o cms ./cmd/cms
 ```
 
 ### 安装向导（Web 模式）
 
 ```
 cms serve（首次）
-  └── InstallGuard 检测 DB 未配置
+  └── InstallGuard 检测"未安装"
        └── 所有请求 → /setup
-            ├── Step 1: 测试数据库连接
-            ├── Step 2: 执行 migrations
-            ├── Step 3: 创建超管账号
-            └── 完成 → 写入 .env → 提示重启
+            ├── Step 1: 输入 DATABASE_URL，测试连接
+            ├── Step 2: 执行 migrations（自动）
+            ├── Step 3: 创建超管账号 + 设置 JWT_SECRET
+            └── 完成 → 写入 .env → 返回 { "action": "restart_required" }
 ```
+
+#### "未安装"检测逻辑（InstallGuard）
+
+两步检测，按顺序：
+
+1. **Config 检测**：`DATABASE_URL` 为空 → 重定向到 `/setup`（填写数据库信息）
+2. **DB 检测**：Config 存在但 `sfc_migrations` 表不存在 → 重定向到 `/setup/migrate`（执行迁移）
+
+两步都通过 = 已安装，正常路由。
+
+#### `.env` 写入路径
+
+| 场景 | 写入路径 |
+|------|----------|
+| 默认 | 二进制所在目录 `./` 下的 `.env` |
+| `--config` flag | flag 指定的路径 |
+| Docker | 容器内 `/data/.env`（挂载 volume） |
+
+#### 重启策略
+
+安装完成后，Go 进程**不自动重启**：
+- Web 向导返回 JSON `{ "status": "installed", "action": "restart_required" }`
+- Console 显示"安装成功，请重启服务"提示
+- 用户手动 `Ctrl+C` + `cms serve` 或依赖 supervisor/Docker restart policy
+- **原因**：自动 `os.Exit` 或 exec 在容器/systemd 环境下行为不可控
 
 ### 安装向导（CLI 模式）
 
 ```bash
-cms install     # 交互式终端，逐步填写配置
+cms install     # 交互式终端，逐步填写 → 写入 .env
 cms serve       # 启动（含 InstallGuard 保护）
 cms migrate up  # 手动执行迁移
 ```
@@ -318,6 +450,22 @@ cms migrate up  # 手动执行迁移
 3. infra 层集成测试 → 实现 bun repository
 4. delivery 层测试（httptest）→ 实现 Huma handler
 ```
+
+### Mock 策略
+
+v1 使用**手写 mock 结构体**（非 mockery），保持零依赖：
+
+```go
+// internal/identity/app/login_test.go
+type mockUserRepo struct {
+    findByEmailFn func(ctx context.Context, email string) (*domain.User, error)
+}
+func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+    return m.findByEmailFn(ctx, email)
+}
+```
+
+**原因**：DDD 接口通常只有 3-5 个方法，手写 mock 比 mockery 生成代码更简洁、更易读。v2 如果接口膨胀再引入 mockery。
 
 ### 铁律
 
@@ -379,7 +527,7 @@ WORKDIR /app
 COPY . .
 COPY --from=console-builder /app/console/dist ./console/dist
 RUN apk add --no-cache git && \
-    go build -ldflags="-s -w" -o cms ./api/cmd/cms
+    go build -ldflags="-s -w" -o cms ./cmd/cms
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates tzdata
@@ -462,7 +610,7 @@ volumes:
 | 资产 | 处理 |
 |------|------|
 | `migrations/` | **复用**（数据库设计最有价值） |
-| `internal/` 领域逻辑 | **参考重写**（适配 DDD 分层，去除 Gin 依赖） |
+| `internal/` 领域逻辑 | **参考重写**：pkg/（95%复用）+ model/（90%复用）+ service（95%复用移入 app/）；handlers/middleware/router 需重写（Gin→Chi+Huma） |
 | `web/` Astro 前端 | **丢弃**（替换为 Templ + HTMX） |
 | `admin/` TanStack Start | **部分重写**：feature 模块（hooks、components）可复用；router shell、root route、server entry point 需重写（TanStack Start SSR → 纯 SPA Vite） |
 | `docs/` 设计文档 | **更新**（反映新架构决策） |

@@ -10,123 +10,108 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/sky-flux/cms/internal/config"
-	"github.com/sky-flux/cms/internal/cron"
-	"github.com/sky-flux/cms/internal/database"
-	"github.com/sky-flux/cms/internal/router"
 )
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "启动 HTTP 服务",
+	Short: "Start the CMS HTTP server",
 	RunE:  runServe,
 }
 
 func init() {
+	serveCmd.Flags().StringP("port", "p", "", "HTTP listen port (overrides SERVER_PORT env)")
+	serveCmd.Flags().String("mode", "", "Server mode: debug|release (overrides SERVER_MODE env)")
 	rootCmd.AddCommand(serveCmd)
-	serveCmd.Flags().StringP("port", "p", "", "服务端口 (覆盖 SERVER_PORT)")
-	serveCmd.Flags().String("mode", "", "运行模式: debug/release (覆盖 SERVER_MODE)")
-	_ = viper.BindPFlag("SERVER_PORT", serveCmd.Flags().Lookup("port"))
-	_ = viper.BindPFlag("SERVER_MODE", serveCmd.Flags().Lookup("mode"))
 }
 
-func runServe(cmd *cobra.Command, args []string) error {
-	cfg, err := config.Load(cfgFile)
+func runServe(cmd *cobra.Command, _ []string) error {
+	cfgFilePath, _ := cmd.Root().PersistentFlags().GetString("config")
+	cfg, err := config.Load(cfgFilePath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	initLogger(cfg)
 
-	slog.Info("starting server", "port", cfg.Server.Port, "mode", cfg.Server.Mode)
-
-	// Connect to PostgreSQL
-	db, err := database.NewPostgres(cfg)
-	if err != nil {
-		return fmt.Errorf("connect to postgres: %w", err)
+	// CLI flag overrides
+	if p, _ := cmd.Flags().GetString("port"); p != "" {
+		cfg.Server.Port = p
 	}
-	defer db.Close()
-	slog.Info("postgres connected")
-
-	// Connect to Redis
-	rdb, err := database.NewRedis(cfg)
-	if err != nil {
-		return fmt.Errorf("connect to redis: %w", err)
-	}
-	defer rdb.Close()
-	slog.Info("redis connected")
-
-	// Connect to Meilisearch (graceful degradation)
-	meili, err := database.NewMeilisearch(cfg)
-	if err != nil {
-		slog.Warn("meilisearch not available, search features disabled", "error", err)
-	} else {
-		slog.Info("meilisearch connected")
+	if m, _ := cmd.Flags().GetString("mode"); m != "" {
+		cfg.Server.Mode = m
 	}
 
-	// Connect to RustFS (graceful degradation)
-	var s3Client *s3.Client
-	s3Client, err = database.NewRustFS(cfg)
-	if err != nil {
-		slog.Warn("rustfs not available, media features disabled", "error", err)
-	} else {
-		slog.Info("rustfs connected")
-	}
+	handler := newServer()
 
-	// Setup Gin engine
-	if cfg.Server.Mode != "debug" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-	engine := gin.New()
-	router.Setup(engine, db, rdb, meili, s3Client, cfg)
-
-	// HTTP server with graceful shutdown
 	srv := &http.Server{
-		Addr:    ":" + cfg.Server.Port,
-		Handler: engine,
+		Addr:         ":" + cfg.Server.Port,
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	go func() {
+		slog.Info("server starting", "addr", srv.Addr, "mode", cfg.Server.Mode)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("server listen error", "error", err)
-			os.Exit(1)
+			slog.Error("server error", "err", err)
+			stop()
 		}
 	}()
 
-	slog.Info("server started", "addr", srv.Addr)
-
-	// Start cron scheduler
-	cronScheduler := cron.NewScheduler(cron.Deps{
-		Sites:     cron.NewBunSiteLister(db),
-		Schema:    cron.NewBunSchemaExecutor(db),
-		Publisher: cron.NewBunScheduledPublisher(db),
-		Cleaner:   cron.NewBunTokenCleaner(db),
-		Purger:    cron.NewBunSoftDeletePurger(db),
-	})
-	cronScheduler.Start()
-
-	// Wait for interrupt signal
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 	<-ctx.Done()
-
-	slog.Info("shutting down server...")
-	cronScheduler.Stop()
+	slog.Info("shutting down gracefully")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	return srv.Shutdown(shutdownCtx)
+}
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("server forced to shutdown: %w", err)
-	}
+// newServer constructs the Chi router and Huma API instance.
+// It is a separate function (not a method) so tests can call it
+// without starting a real listener.
+func newServer() http.Handler {
+	r := chi.NewRouter()
 
-	slog.Info("server stopped")
-	return nil
+	// Global middleware
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.RequestID)
+	r.Use(chimiddleware.Recoverer)
+
+	// Huma API on /api/v1
+	api := humachi.New(r, huma.DefaultConfig("Sky Flux CMS API", "1.0.0"))
+
+	// Health check — registered directly on Huma so it appears in OpenAPI spec
+	huma.Register(api, huma.Operation{
+		OperationID: "health-check",
+		Method:      http.MethodGet,
+		Path:        "/health",
+		Summary:     "Health check",
+		Tags:        []string{"system"},
+	}, func(ctx context.Context, _ *struct{}) (*struct {
+		Body struct {
+			Status string `json:"status"`
+		}
+	}, error) {
+		resp := &struct {
+			Body struct {
+				Status string `json:"status"`
+			}
+		}{}
+		resp.Body.Status = "ok"
+		return resp, nil
+	})
+
+	return r
 }
 
 func initLogger(cfg *config.Config) {

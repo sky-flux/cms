@@ -6,19 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func resetViper() {
-	viper.Reset()
-}
-
 func TestLoad_Defaults(t *testing.T) {
-	resetViper()
-
-	cfg, err := Load("")
+	// Run in isolation: no .env file, no relevant env vars set
+	cfg, err := Load("/nonexistent/.env")
 	require.NoError(t, err)
 
 	assert.Equal(t, "8080", cfg.Server.Port)
@@ -43,8 +37,6 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_FromEnvFile(t *testing.T) {
-	resetViper()
-
 	dir := t.TempDir()
 	envFile := filepath.Join(dir, ".env")
 	content := "SERVER_PORT=9090\nSERVER_MODE=release\nDB_NAME=mydb\nDB_USER=admin\nDB_PASSWORD=secret\n"
@@ -61,11 +53,10 @@ func TestLoad_FromEnvFile(t *testing.T) {
 }
 
 func TestLoad_EnvVarOverride(t *testing.T) {
-	resetViper()
 	t.Setenv("SERVER_PORT", "7777")
 	t.Setenv("DB_NAME", "override_db")
 
-	cfg, err := Load("")
+	cfg, err := Load("/nonexistent/.env")
 	require.NoError(t, err)
 
 	assert.Equal(t, "7777", cfg.Server.Port)
@@ -73,19 +64,19 @@ func TestLoad_EnvVarOverride(t *testing.T) {
 }
 
 func TestLoad_InvalidDuration(t *testing.T) {
-	resetViper()
 	t.Setenv("JWT_ACCESS_EXPIRY", "not-a-duration")
+	t.Cleanup(func() { os.Unsetenv("JWT_ACCESS_EXPIRY") })
 
-	_, err := Load("")
+	_, err := Load("/nonexistent/.env")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "JWT_ACCESS_EXPIRY")
 }
 
 func TestLoad_InvalidDBConnMaxLifetime(t *testing.T) {
-	resetViper()
 	t.Setenv("DB_CONN_MAX_LIFETIME", "bad")
+	t.Cleanup(func() { os.Unsetenv("DB_CONN_MAX_LIFETIME") })
 
-	_, err := Load("")
+	_, err := Load("/nonexistent/.env")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB_CONN_MAX_LIFETIME")
 }
