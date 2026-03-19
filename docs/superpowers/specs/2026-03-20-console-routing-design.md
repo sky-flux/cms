@@ -328,13 +328,96 @@ Dashboard > 文章 > 编辑
 
 ---
 
-## 8. 暗色主题
+## 8. Theme 设计（Sage Teal + Stone 暖灰）
+
+### 设计人格：Precise Content Tool
+
+WordPress 的温暖 + Linear 的精确。让创作者专注内容的工具感。
+
+### Anti-AI 美学决策
+
+| AI 默认 | Sky Flux 替代 |
+|---------|--------------|
+| Inter 字体 | **Geist Sans** + Noto Sans SC |
+| Lucide 图标 | **Phosphor Icons**（duotone 风格） |
+| zinc/slate 冷灰 | **stone 暖灰** |
+| 蓝色主色 | **Sage Teal 哑光青绿** |
+| 纯白背景 | **微暖灰白** oklch(0.985 0.003 90) |
+| 无纹理 | **极淡噪点** on sidebar |
+
+### oklch 色彩变量
+
+```css
+:root {
+  --background: oklch(0.985 0.003 90);
+  --foreground: oklch(0.15 0.01 60);
+  --primary: oklch(0.55 0.12 175);
+  --primary-hover: oklch(0.48 0.13 175);
+  --primary-foreground: oklch(0.98 0.005 175);
+  --primary-light: oklch(0.95 0.03 175);
+  --muted: oklch(0.955 0.005 90);
+  --muted-foreground: oklch(0.45 0.01 60);
+  --border: oklch(0.90 0.005 90);
+  --ring: oklch(0.55 0.12 175 / 0.3);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.01 60);
+  --sidebar: oklch(0.975 0.005 90);
+  --success: oklch(0.60 0.15 155);
+  --warning: oklch(0.75 0.15 85);
+  --destructive: oklch(0.55 0.2 25);
+  --info: oklch(0.60 0.12 240);
+  --radius: 0.5rem;
+  --font-sans: 'Geist Sans', 'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', monospace;
+}
+
+.dark {
+  --background: oklch(0.16 0.01 260);
+  --foreground: oklch(0.93 0.005 90);
+  --primary: oklch(0.65 0.13 175);
+  --primary-hover: oklch(0.70 0.14 175);
+  --primary-foreground: oklch(0.15 0.01 175);
+  --primary-light: oklch(0.22 0.04 175);
+  --muted: oklch(0.22 0.01 260);
+  --muted-foreground: oklch(0.65 0.008 90);
+  --border: oklch(0.28 0.01 260);
+  --card: oklch(0.19 0.01 260);
+  --sidebar: oklch(0.14 0.01 260);
+  --success: oklch(0.65 0.15 155);
+  --warning: oklch(0.78 0.15 85);
+  --destructive: oklch(0.60 0.2 25);
+  --info: oklch(0.65 0.12 240);
+}
+```
+
+### 图标库
+
+```bash
+bun add @phosphor-icons/react
+```
+
+Sidebar 导航使用 `weight="duotone"` 风格（有填充+轮廓的双色效果），比 Lucide 纯线条更温暖。
+
+### 字体
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+```
+
+Geist Sans 从 npm 包 `geist` 加载（Vercel 开源）。
+
+### 色彩比例 60-30-10
+
+- 60% `--background` 微暖白 ← 主内容区
+- 30% `--sidebar` / `--muted` ← Sidebar + 表头
+- 10% `--primary` Sage Teal ← 按钮 + 链接 + 活跃导航
+
+### 暗色模式
 
 - 三种模式：Light / Dark / System（跟随 OS）
 - 切换按钮在 Header 右侧（太阳/月亮图标）
 - `class` 策略：`<html class="dark">`，Tailwind V4 原生支持
 - 偏好存 `localStorage("theme")`
-- 使用已有的 `features/shared/components/ThemeProvider.tsx`
 
 ---
 
@@ -457,9 +540,17 @@ export const Route = createFileRoute('/_dashboard/posts/')({
 - `features/auth/hooks/useMe.ts` — `createQuery` → `useQuery`，query key 改为 `['auth', 'me']`
 - `features/shared/components/QueryProvider.tsx` — 改用 `src/queryClient.ts` 单例（不再创建新实例）
 
-### 新建类型文件
+### 新建类型/配置文件
 
 - `src/types/router.d.ts` — TanStack Router `StaticDataRouteOption` 模块扩展（面包屑用）
+
+### Theme 实施
+
+- `src/styles.css` — 替换为 Sage Teal oklch 变量（light + dark）
+- `components.json` — `baseColor` 从 zinc → stone
+- `package.json` — 添加 `geist`（字体）+ `@phosphor-icons/react`（图标）
+- 移除 `lucide-react`（Phosphor 完全替代）
+- `_dashboard/403.tsx` — 权限不足页面
 
 ### 不做（Sub-project B）
 
