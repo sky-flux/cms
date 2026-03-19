@@ -1,0 +1,196 @@
+package templates
+
+import "time"
+
+// PostDetail is the full view model for a post detail page.
+type PostDetail struct {
+	Slug          string
+	Title         string
+	BodyHTML      string // Pre-rendered HTML from BlockNote/Markdown
+	CoverURL      string
+	PublishedAt   time.Time
+	UpdatedAt     time.Time
+	AuthorName    string
+	AuthorBio     string
+	CategorySlug  string
+	CategoryName  string
+	Tags          []TagRef
+	Comments      []Comment
+	AllowComments bool
+}
+
+// Comment is a single comment view model.
+type Comment struct {
+	ID          string
+	AuthorName  string
+	AuthorEmail string // MD5 hash for Gravatar only
+	Body        string
+	CreatedAt   time.Time
+	IsApproved  bool
+	Children    []Comment
+}
+
+// PostPage renders a full article detail page.
+templ PostPage(cfg SiteConfig, post PostDetail) {
+	@Layout(cfg, post.Title) {
+		<article class="mx-auto max-w-2xl">
+			<!-- Breadcrumb -->
+			<nav class="mb-6 text-sm text-gray-400" aria-label="Breadcrumb">
+				<a href="/" class="hover:text-brand-600">Home</a>
+				<span class="mx-2">/</span>
+				if post.CategoryName != "" {
+					<a href={ templ.SafeURL("/categories/" + post.CategorySlug) } class="hover:text-brand-600">
+						{ post.CategoryName }
+					</a>
+					<span class="mx-2">/</span>
+				}
+				<span class="text-gray-700">{ post.Title }</span>
+			</nav>
+
+			<!-- Header -->
+			<header class="mb-8">
+				<h1 class="text-4xl font-bold leading-tight tracking-tight text-gray-900">
+					{ post.Title }
+				</h1>
+				<div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+					<span>{ post.AuthorName }</span>
+					<time datetime={ post.PublishedAt.Format("2006-01-02") }>
+						{ post.PublishedAt.Format("January 2, 2006") }
+					</time>
+					for _, tag := range post.Tags {
+						<a
+							href={ templ.SafeURL("/tags/" + tag.Slug) }
+							class="rounded-full bg-gray-100 px-3 py-0.5 text-xs text-gray-600 hover:bg-brand-100 hover:text-brand-600"
+						>{ tag.Name }</a>
+					}
+				</div>
+			</header>
+
+			if post.CoverURL != "" {
+				<img
+					src={ post.CoverURL }
+					alt={ post.Title }
+					class="mb-8 w-full rounded-xl object-cover shadow"
+					loading="eager"
+				/>
+			}
+
+			<!-- Body: pre-rendered HTML, scoped with prose typography -->
+			<div class="prose prose-gray max-w-none">
+				@templ.Raw(post.BodyHTML)
+			</div>
+
+			<!-- Author bio -->
+			if post.AuthorBio != "" {
+				<aside class="mt-12 rounded-xl border border-gray-200 bg-gray-50 p-6">
+					<p class="font-semibold text-gray-900">About { post.AuthorName }</p>
+					<p class="mt-1 text-sm text-gray-600">{ post.AuthorBio }</p>
+				</aside>
+			}
+		</article>
+
+		<!-- Comments section -->
+		if post.AllowComments {
+			<section id="comments" class="mx-auto mt-16 max-w-2xl">
+				<h2 class="mb-6 text-2xl font-bold text-gray-900">
+					Comments ({ itoa(len(post.Comments)) })
+				</h2>
+
+				<!-- Approved comments list; HTMX swaps this after successful submission -->
+				<div id="comments-list">
+					for _, c := range post.Comments {
+						@CommentItem(c, 0)
+					}
+				</div>
+
+				<!-- Comment form:
+				     hx-post submits to /posts/{slug}/comments
+				     On 201 Created the server returns an OOB swap of #comments-list
+				     and a success message in #comment-form-status.
+				     hx-swap="outerHTML" replaces the entire form with a thank-you message. -->
+				@CommentForm(post.Slug)
+			</section>
+		}
+	}
+}
+
+// CommentItem renders a single comment, supporting up to 3 levels of nesting.
+templ CommentItem(c Comment, depth int) {
+	<div class={ "border-l-2 border-gray-200 pl-4", templ.KV("ml-8", depth > 0), templ.KV("ml-16", depth > 1) }>
+		<div class="flex items-start gap-3 py-4">
+			<div class="flex-1">
+				<div class="flex items-center gap-2">
+					<span class="font-semibold text-sm text-gray-900">{ c.AuthorName }</span>
+					<time class="text-xs text-gray-400" datetime={ c.CreatedAt.Format("2006-01-02") }>
+						{ c.CreatedAt.Format("Jan 2, 2006") }
+					</time>
+				</div>
+				<p class="mt-1 text-sm text-gray-700">{ c.Body }</p>
+			</div>
+		</div>
+		if depth < 2 {
+			for _, child := range c.Children {
+				@CommentItem(child, depth+1)
+			}
+		}
+	</div>
+}
+
+// CommentForm renders the new comment submission form.
+// HTMX interaction: hx-post="/posts/{slug}/comments" sends form data.
+// Server responds with HX-Reswap + OOB swap to update #comments-list.
+templ CommentForm(slug string) {
+	<form
+		id="comment-form"
+		class="mt-8 rounded-xl border border-gray-200 bg-gray-50 p-6"
+		hx-post={ "/posts/" + slug + "/comments" }
+		hx-target="#comment-form-status"
+		hx-swap="innerHTML"
+		hx-on::after-request="if(event.detail.successful) this.reset()"
+	>
+		<h3 class="mb-4 text-lg font-semibold text-gray-900">Leave a Comment</h3>
+		<div id="comment-form-status" class="mb-4 text-sm" aria-live="polite"></div>
+
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div>
+				<label for="comment-name" class="block text-sm font-medium text-gray-700">Name *</label>
+				<input
+					id="comment-name"
+					name="author_name"
+					type="text"
+					required
+					class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+				/>
+			</div>
+			<div>
+				<label for="comment-email" class="block text-sm font-medium text-gray-700">Email *</label>
+				<input
+					id="comment-email"
+					name="author_email"
+					type="email"
+					required
+					class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+				/>
+			</div>
+		</div>
+
+		<div class="mt-4">
+			<label for="comment-body" class="block text-sm font-medium text-gray-700">Comment *</label>
+			<textarea
+				id="comment-body"
+				name="body"
+				rows="5"
+				required
+				class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+			></textarea>
+		</div>
+
+		<button
+			type="submit"
+			class="mt-4 rounded-md bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+			hx-disabled-elt="this"
+		>
+			Submit Comment
+		</button>
+	</form>
+}

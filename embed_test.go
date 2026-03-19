@@ -17,7 +17,18 @@ func TestConsoleFSReadable(t *testing.T) {
 }
 
 func TestWebStaticFSReadable(t *testing.T) {
-	_, err := fs.Stat(cms.WebStaticFS, "web/static/.gitkeep")
-	require.NoError(t, err, "web/static/.gitkeep must be embedded — run: mkdir -p web/static && touch web/static/.gitkeep")
+	_, err := fs.Stat(cms.WebStaticFS, "web/static/htmx.min.js")
+	require.NoError(t, err, "web/static/htmx.min.js must be embedded")
 	assert.NoError(t, err)
+}
+
+func TestWebStaticFS_ContainsRequiredFiles(t *testing.T) {
+	sub, err := fs.Sub(cms.WebStaticFS, "web/static")
+	require.NoError(t, err)
+
+	files := []string{"app.css", "htmx.min.js"}
+	for _, f := range files {
+		_, err := sub.Open(f)
+		assert.NoError(t, err, "expected %s in WebStaticFS", f)
+	}
 }

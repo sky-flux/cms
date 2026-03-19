@@ -1,0 +1,31 @@
+package templates
+
+// TagArchivePage renders posts filtered by tag.
+templ TagArchivePage(cfg SiteConfig, tagName string, tagSlug string, posts []PostSummary, page int) {
+	@Layout(cfg, "Tag: "+tagName) {
+		<section class="mb-10">
+			<p class="text-sm text-gray-400 uppercase tracking-wider">Tag</p>
+			<h1 class="mt-1 text-3xl font-bold tracking-tight text-gray-900">{ tagName }</h1>
+		</section>
+
+		<div id="posts-list" class="grid gap-8 sm:grid-cols-2">
+			for _, p := range posts {
+				@PostCard(p)
+			}
+		</div>
+
+		if len(posts) >= 10 {
+			<div class="mt-10 flex justify-center">
+				<button
+					id="load-more-btn"
+					class="rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-600 hover:border-brand-600 hover:text-brand-600 transition-colors"
+					hx-get={ "/tags/" + tagSlug + "/partial?page=" + itoa(page+1) }
+					hx-target="#posts-list"
+					hx-swap="beforeend"
+				>
+					Load More
+				</button>
+			</div>
+		}
+	}
+}

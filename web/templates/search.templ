@@ -1,0 +1,63 @@
+package templates
+
+// SearchPage renders the full search results page (initial GET).
+templ SearchPage(cfg SiteConfig, query string, results []PostSummary) {
+	@Layout(cfg, "Search: "+query) {
+		<section class="mb-8">
+			<h1 class="text-2xl font-bold text-gray-900">
+				if query != "" {
+					Search results for "{ query }"
+				} else {
+					Search
+				}
+			</h1>
+
+			<!-- Standalone search bar on the results page with live HTMX updates.
+			     hx-get="/search" — sends q param to the server.
+			     hx-target="#search-results" — replaces just the results list.
+			     hx-push-url="true" — updates the URL bar so results are bookmarkable.
+			     hx-trigger="input changed delay:300ms, search" covers both keystrokes and clear. -->
+			<form class="mt-4" action="/search" method="get" role="search">
+				<input
+					type="search"
+					name="q"
+					value={ query }
+					placeholder="Type to search…"
+					autofocus
+					class="w-full rounded-xl border border-gray-300 px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+					hx-get="/search"
+					hx-trigger="input changed delay:300ms, search"
+					hx-target="#search-results"
+					hx-push-url="true"
+					hx-include="this"
+				/>
+			</form>
+		</section>
+
+		<!-- Results container; HTMX replaces innerHTML -->
+		<div id="search-results">
+			@SearchResults(query, results)
+		</div>
+	}
+}
+
+// SearchResults is the HTMX partial fragment returned for live search updates.
+// The handler returns ONLY this component when HX-Request header is present.
+templ SearchResults(query string, results []PostSummary) {
+	if len(results) == 0 {
+		<p class="text-gray-500 text-sm">
+			if query != "" {
+				No results for "{ query }". Try different keywords.
+			} else {
+				Start typing to search posts…
+			}
+		</p>
+	} else {
+		<p class="mb-4 text-sm text-gray-400">{ itoa(len(results)) } result(s) found</p>
+		<div class="grid gap-6 sm:grid-cols-2">
+			for _, p := range results {
+				@PostCard(p)
+			}
+		</div>
+	}
+}

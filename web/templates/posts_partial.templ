@@ -1,0 +1,28 @@
+package templates
+
+// PostsPartial returns just the post card grid rows for HTMX infinite scroll.
+// The handler checks r.Header.Get("HX-Request") == "true" before using this.
+// The response also includes an OOB swap to update/remove the load-more button.
+templ PostsPartial(posts []PostSummary, nextPage int, loadMoreURL string) {
+	<!-- Post cards appended into #posts-list by HTMX -->
+	for _, p := range posts {
+		@PostCard(p)
+	}
+
+	<!-- OOB swap: replaces #load-more-btn with a new page or removes it if no more -->
+	if len(posts) >= 10 && loadMoreURL != "" {
+		<button
+			id="load-more-btn"
+			hx-swap-oob="true"
+			class="rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-600 hover:border-brand-600 hover:text-brand-600 transition-colors"
+			hx-get={ loadMoreURL }
+			hx-target="#posts-list"
+			hx-swap="beforeend"
+		>
+			Load More
+		</button>
+	} else {
+		<!-- Remove the load-more button: OOB swap with empty content -->
+		<span id="load-more-btn" hx-swap-oob="true"></span>
+	}
+}

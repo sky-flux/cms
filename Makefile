@@ -1,4 +1,4 @@
-.PHONY: setup dev dev-backend dev-frontend test test-backend test-frontend lint build clean migrate-up migrate-down migrate-status test-perf-smoke test-perf test-perf-public test-all docker-build docker-push docker-prod-up docker-prod-down docker-prod-logs docker-local-up docker-local-down docker-local-logs docker-local-reset
+.PHONY: setup dev dev-backend dev-frontend test test-backend test-frontend lint build clean migrate-up migrate-down migrate-status test-perf-smoke test-perf test-perf-public test-all docker-build docker-push docker-prod-up docker-prod-down docker-prod-logs docker-local-up docker-local-down docker-local-logs docker-local-reset templ-generate templ-watch css-build css-watch
 
 # ──────────────────────────────────────
 # 开发环境
@@ -78,8 +78,26 @@ migrate-status:
 # ──────────────────────────────────────
 
 build:
+	templ generate ./web/templates/
+	tailwindcss -i web/styles/input.css -o web/static/app.css --minify
 	go build -ldflags="-w -s" -o ./tmp/cms ./cmd/cms
 	cd web && bun run build
+
+# ──────────────────────────────────────
+# Web 公共站点 (Templ + HTMX + Tailwind)
+# ──────────────────────────────────────
+
+templ-generate:
+	templ generate ./web/templates/
+
+templ-watch:
+	templ generate --watch ./web/templates/
+
+css-build:
+	tailwindcss -i web/styles/input.css -o web/static/app.css --minify
+
+css-watch:
+	tailwindcss -i web/styles/input.css -o web/static/app.css --watch
 
 # ──────────────────────────────────────
 # 清理

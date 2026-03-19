@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Sky Flux CMS — public site base styles */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+}
+
+@source "../templates/**/*.templ";

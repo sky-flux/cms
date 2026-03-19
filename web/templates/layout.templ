@@ -1,0 +1,73 @@
+package templates
+
+// NavItem represents a navigation menu entry.
+type NavItem struct {
+	Label string
+	URL   string
+}
+
+// SiteConfig holds site-wide settings for the layout.
+type SiteConfig struct {
+	Name        string
+	Description string
+	NavItems    []NavItem
+}
+
+// Layout wraps all public pages in the HTML shell.
+templ Layout(cfg SiteConfig, title string) {
+	<!DOCTYPE html>
+	<html lang="en" class="scroll-smooth">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title } — { cfg.Name }</title>
+			<meta name="description" content={ cfg.Description }/>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<!-- HTMX 2.x: hx-boost on <body> upgrades all same-origin links to AJAX -->
+			<script src="/static/htmx.min.js" defer></script>
+		</head>
+		<body class="min-h-screen bg-white text-gray-900 antialiased" hx-boost="true">
+			@Nav(cfg)
+			<main id="main-content" class="mx-auto max-w-5xl px-4 py-8">
+				{ children... }
+			</main>
+			@Footer(cfg)
+		</body>
+	</html>
+}
+
+// Nav renders the top navigation bar.
+templ Nav(cfg SiteConfig) {
+	<header class="border-b border-gray-200 bg-white">
+		<div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+			<a href="/" class="text-xl font-bold text-brand-600">{ cfg.Name }</a>
+			<nav class="flex items-center gap-6 text-sm">
+				for _, item := range cfg.NavItems {
+					<a href={ templ.SafeURL(item.URL) } class="text-gray-600 hover:text-brand-600 transition-colors">
+						{ item.Label }
+					</a>
+				}
+				<!-- Search input: HTMX triggers GET /search?q=... on input -->
+				<form action="/search" method="get" role="search">
+					<input
+						type="search"
+						name="q"
+						placeholder="Search…"
+						class="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+						hx-get="/search"
+						hx-trigger="input changed delay:300ms"
+						hx-target="#search-results"
+						hx-push-url="true"
+					/>
+				</form>
+			</nav>
+		</div>
+	</header>
+}
+
+// Footer renders the site footer.
+templ Footer(cfg SiteConfig) {
+	<footer class="mt-16 border-t border-gray-200 py-8 text-center text-sm text-gray-500">
+		<p>© { cfg.Name }. Powered by <a href="https://github.com/sky-flux/cms" class="underline hover:text-brand-600">Sky Flux CMS</a>.</p>
+	</footer>
+}

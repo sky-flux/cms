@@ -1,0 +1,39 @@
+package templates
+
+// CategoryArchivePage renders posts filtered by category.
+templ CategoryArchivePage(cfg SiteConfig, categoryName string, categorySlug string, posts []PostSummary, page int) {
+	@Layout(cfg, "Category: "+categoryName) {
+		<section class="mb-10">
+			<p class="text-sm text-gray-400 uppercase tracking-wider">Category</p>
+			<h1 class="mt-1 text-3xl font-bold tracking-tight text-gray-900">{ categoryName }</h1>
+		</section>
+
+		<div id="posts-list" class="grid gap-8 sm:grid-cols-2">
+			for _, p := range posts {
+				@PostCard(p)
+			}
+		</div>
+
+		<!-- HTMX "Load More" button (alternative to intersection observer):
+		     Clicking appends the next page of posts into #posts-list.
+		     The server returns only the PostsPartial fragment (no full HTML shell).
+		     hx-swap="beforeend" appends cards; OOB swap replaces this button. -->
+		if len(posts) >= 10 {
+			<div class="mt-10 flex justify-center">
+				<button
+					id="load-more-btn"
+					class="rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-600 hover:border-brand-600 hover:text-brand-600 transition-colors"
+					hx-get={ "/categories/" + categorySlug + "/partial?page=" + itoa(page+1) }
+					hx-target="#posts-list"
+					hx-swap="beforeend"
+					hx-indicator="#loading-spinner"
+				>
+					Load More
+				</button>
+			</div>
+		}
+		<div id="loading-spinner" class="htmx-indicator mt-4 flex justify-center">
+			<span class="text-sm text-gray-400">Loading…</span>
+		</div>
+	}
+}

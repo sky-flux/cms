@@ -1,0 +1,97 @@
+package templates
+
+import "time"
+
+// PostSummary is the view model for a post card on list pages.
+type PostSummary struct {
+	Slug         string
+	Title        string
+	Excerpt      string
+	CoverURL     string
+	PublishedAt  time.Time
+	AuthorName   string
+	CategorySlug string
+	CategoryName string
+	Tags         []TagRef
+}
+
+// TagRef is a lightweight tag reference used in post cards.
+type TagRef struct {
+	Slug string
+	Name string
+}
+
+// HomePage renders the site homepage with the latest posts.
+templ HomePage(cfg SiteConfig, posts []PostSummary) {
+	@Layout(cfg, "Home") {
+		<section class="mb-10">
+			<h1 class="text-3xl font-bold tracking-tight text-gray-900">Latest Posts</h1>
+			<p class="mt-2 text-gray-500">{ cfg.Description }</p>
+		</section>
+
+		<!-- Posts grid; initially server-rendered, HTMX pagination appends more below -->
+		<div id="posts-list" class="grid gap-8 sm:grid-cols-2">
+			for _, p := range posts {
+				@PostCard(p)
+			}
+		</div>
+
+		<!-- HTMX infinite scroll sentinel:
+		     When this element enters the viewport, GET /posts/partial?page=2
+		     appends results into #posts-list.
+		     hx-swap="beforeend" + hx-target="#posts-list" means new cards are appended.
+		     hx-swap-oob on the sentinel itself updates the next-page URL. -->
+		if len(posts) >= 10 {
+			<div
+				id="load-more-sentinel"
+				class="mt-10 flex justify-center"
+				hx-get="/posts/partial?page=2"
+				hx-trigger="intersect once"
+				hx-target="#posts-list"
+				hx-swap="beforeend"
+				hx-indicator="#loading-spinner"
+			>
+				<span class="text-sm text-gray-400">Loading more…</span>
+			</div>
+		}
+		<div id="loading-spinner" class="htmx-indicator mt-4 flex justify-center">
+			<span class="text-sm text-gray-400">Loading…</span>
+		</div>
+	}
+}
+
+// PostCard renders a single post card for use in list views.
+templ PostCard(p PostSummary) {
+	<article class="rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+		if p.CoverURL != "" {
+			<img
+				src={ p.CoverURL }
+				alt={ p.Title }
+				class="h-48 w-full rounded-t-xl object-cover"
+				loading="lazy"
+			/>
+		}
+		<div class="p-5">
+			if p.CategoryName != "" {
+				<a
+					href={ templ.SafeURL("/categories/" + p.CategorySlug) }
+					class="text-xs font-semibold uppercase tracking-wider text-brand-600"
+				>{ p.CategoryName }</a>
+			}
+			<h2 class="mt-2 text-xl font-semibold leading-snug text-gray-900">
+				<a href={ templ.SafeURL("/posts/" + p.Slug) } class="hover:text-brand-600">
+					{ p.Title }
+				</a>
+			</h2>
+			if p.Excerpt != "" {
+				<p class="mt-2 text-sm text-gray-600 line-clamp-3">{ p.Excerpt }</p>
+			}
+			<div class="mt-4 flex items-center justify-between text-xs text-gray-400">
+				<span>{ p.AuthorName }</span>
+				<time datetime={ p.PublishedAt.Format("2006-01-02") }>
+					{ p.PublishedAt.Format("Jan 2, 2006") }
+				</time>
+			</div>
+		</div>
+	</article>
+}
