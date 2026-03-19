@@ -115,7 +115,8 @@ console/src/routes/
     ├── roles.tsx                 # /roles
     ├── settings.tsx              # /settings
     ├── api-keys.tsx              # /api-keys
-    └── audit.tsx                 # /audit
+    ├── audit.tsx                 # /audit
+    └── 403.tsx                   # /dashboard/403（权限不足）
 ```
 
 ---
@@ -130,7 +131,7 @@ beforeLoad: async ({ context }) => {
     const user = await context.queryClient.ensureQueryData({
       queryKey: ['auth', 'me'],
       queryFn: () => apiClient.get('/api/v1/auth/me'),
-      staleTime: 5 * 60 * 1000,
+      staleTime: 60 * 1000, // 1min — 平衡安全与性能
     })
     return { user }
   } catch {
@@ -139,9 +140,26 @@ beforeLoad: async ({ context }) => {
 }
 ```
 
-- `ensureQueryData` 首次调 API 验证 token，之后走 TanStack Query 缓存（5min staleTime）
+- `ensureQueryData` 首次调 API 验证 token，之后走 TanStack Query 缓存（1min staleTime — 平衡安全与性能）
 - 401 → 重定向到 `/login`
 - 返回 `{ user }` 注入路由 context，子路由通过 `useRouteContext()` 获取当前用户和权限
+- **已知限制**：staleTime 窗口内 token 被吊销，用户仍可导航。API 层的 401 拦截器是真正的安全保障，beforeLoad 仅做 UX 优化
+
+### `/api/v1/auth/me` 响应
+
+```json
+{
+  "id": "uuid",
+  "email": "admin@example.com",
+  "name": "Admin",
+  "role": "super",
+  "permissions": ["posts.create", "posts.delete", "users.manage", "..."]
+}
+```
+
+**实现注意**：
+- `MeResponse` 类型需新增 `permissions: string[]` 字段
+- `useMe` hook 需修复：`createQuery` → `useQuery`，query key 统一为 `['auth', 'me']`
 
 ### Token 自动刷新
 
@@ -159,8 +177,8 @@ if (response.status === 401 && !isRefreshing) {
 }
 // 并发请求共享同一个 refreshPromise
 if (response.status === 401 && isRefreshing) {
-  await refreshPromise
-  return retry(originalRequest)
+  const newToken = await refreshPromise
+  return retry(originalRequest, newToken) // 必须附带新 token
 }
 // refresh 也失败 → 清除状态 → /login
 ```
@@ -288,6 +306,18 @@ export const Route = createFileRoute('/_dashboard/posts/')({
   staticData: { title: '文章' },
   component: PostsPage,
 })
+```
+
+**前置条件**：需要 TanStack Router 模块扩展：
+
+```tsx
+// console/src/types/router.d.ts
+import '@tanstack/react-router'
+declare module '@tanstack/react-router' {
+  interface StaticDataRouteOption {
+    title?: string
+  }
+}
 ```
 
 Header 组件遍历 `useMatches()` 提取 `staticData.title` 生成：
@@ -421,8 +451,15 @@ export const Route = createFileRoute('/_dashboard/posts/')({
 
 ### 修改
 
-- `api-client.ts` — 添加 401 拦截 + token 自动刷新
+- `api-client.ts` — 添加 401 拦截 + token 自动刷新（access token 存内存变量，refresh token 是 httpOnly cookie）
 - `__root.tsx` — 添加 `notFoundComponent`
+- `features/auth/types/auth.ts` — `MeResponse` 新增 `permissions: string[]`
+- `features/auth/hooks/useMe.ts` — `createQuery` → `useQuery`，query key 改为 `['auth', 'me']`
+- `features/shared/components/QueryProvider.tsx` — 改用 `src/queryClient.ts` 单例（不再创建新实例）
+
+### 新建类型文件
+
+- `src/types/router.d.ts` — TanStack Router `StaticDataRouteOption` 模块扩展（面包屑用）
 
 ### 不做（Sub-project B）
 
